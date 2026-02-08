@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { scenariosAPI } from '@/services/api';
 import {
     MousePointer, Brush, Eraser, TrafficCone, Lightbulb,
-    Octagon, Users, Play, Save, Settings, ZoomIn, ZoomOut
+    Octagon, Users, Play, Save, Settings, ZoomIn, ZoomOut, CircleDot, Trash2
 } from 'lucide-react';
 
 const ScenarioBuilder = () => {
@@ -31,6 +31,8 @@ const ScenarioBuilder = () => {
     const currentPath = React.useRef([]);
     const isDrawing = React.useRef(false);
     const agents = React.useRef([]);
+    // Points placed in "draw by points" mode (click to add, double-click or button to finish)
+    const [pointPath, setPointPath] = React.useState([]);
 
     // Render canvas
     useEffect(() => {
@@ -100,7 +102,7 @@ const ScenarioBuilder = () => {
                 ctx.setLineDash([]);
             });
 
-            // Draw current stroke preview
+            // Draw current stroke preview (freehand)
             if (isDrawing.current && currentPath.current.length > 0) {
                 ctx.beginPath();
                 ctx.moveTo(currentPath.current[0].x, currentPath.current[0].y);
@@ -110,6 +112,36 @@ const ScenarioBuilder = () => {
                 ctx.lineWidth = 40;
                 ctx.strokeStyle = '#475569';
                 ctx.stroke();
+            }
+
+            // Draw point-mode path (dots connected by lines)
+            if (tool === 'road-points' && pointPath.length > 0) {
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                if (pointPath.length >= 2) {
+                    ctx.beginPath();
+                    ctx.moveTo(pointPath[0].x, pointPath[0].y);
+                    for (let i = 1; i < pointPath.length; i++) {
+                        ctx.lineTo(pointPath[i].x, pointPath[i].y);
+                    }
+                    ctx.lineWidth = 40;
+                    ctx.strokeStyle = '#475569';
+                    ctx.stroke();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#fbbf24';
+                    ctx.setLineDash([10, 10]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+                pointPath.forEach(p => {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.fill();
+                    ctx.strokeStyle = '#334155';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                });
             }
 
             // Draw objects
@@ -211,7 +243,7 @@ const ScenarioBuilder = () => {
 
         render();
         return () => cancelAnimationFrame(animationFrameId);
-    }, [camera, scenario, config, isPreviewing, tool]);
+    }, [camera, scenario, config, isPreviewing, tool, pointPath]);
 
     // Mouse helpers
     const getPos = (e) => {
@@ -228,6 +260,8 @@ const ScenarioBuilder = () => {
         } else if (tool === 'road') {
             isDrawing.current = true;
             currentPath.current = [getPos(e)];
+        } else if (tool === 'road-points') {
+            setPointPath(prev => [...prev, getPos(e)]);
         } else if (['light', 'stop', 'ped', 'obs'].includes(tool)) {
             const p = getPos(e);
             setScenario(prev => ({
@@ -264,20 +298,109 @@ const ScenarioBuilder = () => {
         }
     };
 
+    // Distance within which a new stroke is considered "connected" to an existing road
+    const CONNECT_THRESHOLD = 40;
+    const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+    const isNear = (a, b) => dist(a, b) <= CONNECT_THRESHOLD;
+
+    const applyPathToScenario = (pathToSave) => {
+        if (pathToSave.length < 2) return;
+        const newStart = pathToSave[0];
+        const newEnd = pathToSave[pathToSave.length - 1];
+        setScenario(prev => {
+            const strokes = [...prev.strokes];
+            let startRoadIdx = -1;
+            let startConnectsToEnd = false;
+            let endRoadIdx = -1;
+            let endConnectsToStart = false;
+
+            for (let i = 0; i < strokes.length; i++) {
+                const road = strokes[i];
+                if (road.points.length < 2) continue;
+                const rs = road.points[0];
+                const re = road.points[road.points.length - 1];
+                if (isNear(newStart, re)) { startRoadIdx = i; startConnectsToEnd = true; break; }
+                if (isNear(newStart, rs)) { startRoadIdx = i; startConnectsToEnd = false; break; }
+            }
+            for (let i = 0; i < strokes.length; i++) {
+                const road = strokes[i];
+                if (road.points.length < 2) continue;
+                const rs = road.points[0];
+                const re = road.points[road.points.length - 1];
+                if (isNear(newEnd, rs)) { endRoadIdx = i; endConnectsToStart = true; break; }
+                if (isNear(newEnd, re)) { endRoadIdx = i; endConnectsToStart = false; break; }
+            }
+
+            const width = 40;
+
+            if (startRoadIdx >= 0 && endRoadIdx >= 0 && startRoadIdx !== endRoadIdx) {
+                const roadA = strokes[startRoadIdx];
+                const roadB = strokes[endRoadIdx];
+                const aPoints = [...roadA.points];
+                const bPoints = [...roadB.points];
+                let merged;
+                if (startConnectsToEnd && endConnectsToStart) merged = [...aPoints, ...pathToSave, ...bPoints];
+                else if (startConnectsToEnd && !endConnectsToStart) merged = [...aPoints, ...pathToSave, ...bPoints.reverse()];
+                else if (!startConnectsToEnd && endConnectsToStart) merged = [...aPoints.reverse(), ...pathToSave, ...bPoints];
+                else merged = [...aPoints.reverse(), ...pathToSave, ...bPoints.reverse()];
+                strokes[startRoadIdx] = { points: merged, width };
+                strokes.splice(endRoadIdx, 1);
+                return { ...prev, strokes };
+            }
+            if (startRoadIdx >= 0) {
+                const road = strokes[startRoadIdx];
+                const merged = startConnectsToEnd ? [...road.points, ...pathToSave] : [...pathToSave].reverse().concat(road.points);
+                strokes[startRoadIdx] = { points: merged, width };
+                return { ...prev, strokes };
+            }
+            if (endRoadIdx >= 0) {
+                const road = strokes[endRoadIdx];
+                const merged = endConnectsToStart ? [...pathToSave, ...road.points] : [...road.points, ...[...pathToSave].reverse()];
+                strokes[endRoadIdx] = { points: merged, width };
+                return { ...prev, strokes };
+            }
+            return { ...prev, strokes: [...strokes, { points: pathToSave, width }] };
+        });
+    };
+
     const handleMouseUp = () => {
         setIsDragging(false);
         if (isDrawing.current) {
             isDrawing.current = false;
             const pathToSave = [...currentPath.current];
             currentPath.current = [];
-
-            if (pathToSave.length > 1) {
-                setScenario(prev => ({
-                    ...prev,
-                    strokes: [...prev.strokes, { points: pathToSave, width: 40 }]
-                }));
-            }
+            applyPathToScenario(pathToSave);
         }
+    };
+
+    const finishPointLine = () => {
+        if (pointPath.length >= 2) {
+            applyPathToScenario(pointPath);
+            setPointPath([]);
+        }
+    };
+
+    const handleDoubleClick = (e) => {
+        if (tool === 'road-points' && pointPath.length >= 2) {
+            e.preventDefault();
+            finishPointLine();
+        }
+    };
+
+    const clearMap = () => {
+        if (window.confirm('Clear the entire map? All roads and objects will be removed.')) {
+            setScenario(prev => ({ ...prev, strokes: [], objects: [] }));
+            setPointPath([]);
+            currentPath.current = [];
+        }
+    };
+
+    // When switching away from "Draw by points", commit any unfinished line so it doesn't disappear
+    const setToolAndCommitPointPath = (newTool) => {
+        if (tool === 'road-points' && newTool !== 'road-points' && pointPath.length >= 2) {
+            finishPointLine();
+        }
+        setTool(newTool);
     };
 
     const handleSave = async () => {
@@ -309,6 +432,7 @@ const ScenarioBuilder = () => {
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
+                    onDoubleClick={handleDoubleClick}
                     className="w-full h-full cursor-crosshair"
                 />
 
@@ -330,7 +454,11 @@ const ScenarioBuilder = () => {
 
                 {/* Tool indicator */}
                 <div className="absolute top-4 left-4 bg-black/50 backdrop-blur px-3 py-1 rounded text-xs text-gray-300">
-                    {tool === 'select' ? 'Pan Mode (Drag to Move)' : `${tool} Tool Active`}
+                    {tool === 'select' && 'Pan Mode (Drag to Move)'}
+                    {tool === 'road' && 'Road Tool — Draw freehand'}
+                    {tool === 'road-points' && 'Draw by points — Click to add, double-click to finish'}
+                    {tool === 'eraser' && 'Eraser Tool Active'}
+                    {['light', 'stop', 'ped', 'obs'].includes(tool) && `${tool} Tool Active`}
                 </div>
             </div>
 
@@ -359,7 +487,7 @@ const ScenarioBuilder = () => {
                     <div>
                         <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Navigation</h3>
                         <button
-                            onClick={() => setTool('select')}
+                            onClick={() => setToolAndCommitPointPath('select')}
                             className={`w-full p-3 rounded-lg border flex items-center justify-center gap-2 transition-all ${tool === 'select'
                                     ? 'bg-blue-500/20 border-blue-500 text-blue-500'
                                     : 'border-gray-700 hover:bg-gray-800 text-gray-300'
@@ -375,7 +503,7 @@ const ScenarioBuilder = () => {
                         <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Infrastructure</h3>
                         <div className="grid grid-cols-2 gap-2">
                             <button
-                                onClick={() => setTool('road')}
+                                onClick={() => setToolAndCommitPointPath('road')}
                                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${tool === 'road'
                                         ? 'bg-primary/20 border-primary text-primary'
                                         : 'border-gray-700 hover:bg-gray-800 text-gray-300'
@@ -385,7 +513,17 @@ const ScenarioBuilder = () => {
                                 <span className="text-xs">Draw Road</span>
                             </button>
                             <button
-                                onClick={() => setTool('eraser')}
+                                onClick={() => setToolAndCommitPointPath('road-points')}
+                                className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${tool === 'road-points'
+                                        ? 'bg-primary/20 border-primary text-primary'
+                                        : 'border-gray-700 hover:bg-gray-800 text-gray-300'
+                                    }`}
+                            >
+                                <CircleDot size={20} />
+                                <span className="text-xs">Draw by Points</span>
+                            </button>
+                            <button
+                                onClick={() => setToolAndCommitPointPath('eraser')}
                                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${tool === 'eraser'
                                         ? 'bg-red-500/20 border-red-500 text-red-500'
                                         : 'border-gray-700 hover:bg-gray-800 text-gray-300'
@@ -395,6 +533,14 @@ const ScenarioBuilder = () => {
                                 <span className="text-xs">Eraser</span>
                             </button>
                         </div>
+                        {tool === 'road-points' && pointPath.length >= 2 && (
+                            <button
+                                onClick={finishPointLine}
+                                className="mt-2 w-full py-2 rounded-lg border border-primary bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
+                            >
+                                Complete line ({pointPath.length} points)
+                            </button>
+                        )}
                     </div>
 
                     {/* Traffic Controls */}
@@ -402,7 +548,7 @@ const ScenarioBuilder = () => {
                         <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Traffic Controls</h3>
                         <div className="grid grid-cols-2 gap-2">
                             <button
-                                onClick={() => setTool('light')}
+                                onClick={() => setToolAndCommitPointPath('light')}
                                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${tool === 'light'
                                         ? 'bg-yellow-500/20 border-yellow-500 text-yellow-500'
                                         : 'border-gray-700 hover:bg-gray-800 text-gray-300'
@@ -412,7 +558,7 @@ const ScenarioBuilder = () => {
                                 <span className="text-xs">Traffic Light</span>
                             </button>
                             <button
-                                onClick={() => setTool('stop')}
+                                onClick={() => setToolAndCommitPointPath('stop')}
                                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${tool === 'stop'
                                         ? 'bg-red-500/20 border-red-500 text-red-500'
                                         : 'border-gray-700 hover:bg-gray-800 text-gray-300'
@@ -429,7 +575,7 @@ const ScenarioBuilder = () => {
                         <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Hazards</h3>
                         <div className="grid grid-cols-2 gap-2">
                             <button
-                                onClick={() => setTool('ped')}
+                                onClick={() => setToolAndCommitPointPath('ped')}
                                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${tool === 'ped'
                                         ? 'bg-purple-500/20 border-purple-500 text-purple-500'
                                         : 'border-gray-700 hover:bg-gray-800 text-gray-300'
@@ -439,7 +585,7 @@ const ScenarioBuilder = () => {
                                 <span className="text-xs">Pedestrians</span>
                             </button>
                             <button
-                                onClick={() => setTool('obs')}
+                                onClick={() => setToolAndCommitPointPath('obs')}
                                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${tool === 'obs'
                                         ? 'bg-orange-500/20 border-orange-500 text-orange-500'
                                         : 'border-gray-700 hover:bg-gray-800 text-gray-300'
@@ -480,6 +626,13 @@ const ScenarioBuilder = () => {
 
                     {/* Actions */}
                     <div className="pt-4 border-t border-gray-700">
+                        <button
+                            onClick={clearMap}
+                            className="w-full py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all mb-2 border border-red-500/50 text-red-400 hover:bg-red-500/20"
+                        >
+                            <Trash2 size={18} />
+                            Clear Map
+                        </button>
                         <button
                             onClick={() => setIsPreviewing(!isPreviewing)}
                             className={`w-full py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all mb-2 ${isPreviewing
