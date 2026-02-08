@@ -41,6 +41,22 @@ function distToSegment(px, py, x1, y1, x2, y2) {
     return Math.hypot(px - nx, py - ny);
 }
 
+// Center of road network (used to position camera at map center, matching Scenario Builder view)
+function getRoadNetworkCenter(roads) {
+    if (!roads?.length) return { x: 0, y: 0 };
+    let sumX = 0, sumY = 0, n = 0;
+    roads.forEach((road) => {
+        const pts = road?.points;
+        if (!pts?.length) return;
+        pts.forEach((p) => {
+            sumX += p.x;
+            sumY += p.y;
+            n++;
+        });
+    });
+    return n ? { x: sumX / n, y: sumY / n } : { x: 0, y: 0 };
+}
+
 function isOnRoad(px, py, roads) {
     if (!roads?.length) return false;
     for (const road of roads) {
@@ -59,12 +75,16 @@ function isOnRoad(px, py, roads) {
 const CAR_WIDTH = 24;
 const CAR_HEIGHT = 12;
 
+const SCENE_SIM_STORAGE_KEY = 'aumovio_scene_simulation_state';
+
 const SceneSimulation = () => {
     const canvasRef = useRef(null);
     const [scenarios, setScenarios] = useState([]);
     const [selectedScenario, setSelectedScenario] = useState(null);
     const [simulationType, setSimulationType] = useState('ai_simulation');
     const [isRunning, setIsRunning] = useState(false);
+    const hasRestoredState = useRef(false);
+    const skipCenterOnRestore = useRef(false);
     const [vehicles, setVehicles] = useState([]);
     const [hudSpeed, setHudSpeed] = useState(0);
 
@@ -94,6 +114,98 @@ const SceneSimulation = () => {
         loadScenarios();
     }, []);
 
+    // Save full simulation state (car position, vehicles, cameras) for restore when navigating back
+    const saveStateRef = useRef(null);
+    saveStateRef.current = () => {
+        try {
+            const p = playerPhysics.current;
+            const state = {
+                selectedScenarioId: selectedScenario ? String(selectedScenario.id) : null,
+                simulationType,
+                isRunning,
+                playerPhysics: { ...p },
+                camera: { ...cameraRef.current },
+                vehicles: vehiclesRef.current.map((v) => ({ ...v })),
+                aiCamera: { ...aiCameraRef.current },
+            };
+            localStorage.setItem(SCENE_SIM_STORAGE_KEY, JSON.stringify(state));
+        } catch (_) {
+            /* ignore */
+        }
+    };
+
+    // Save on unmount (navigate away) and periodically when running
+    useEffect(() => {
+        const save = () => saveStateRef.current?.();
+        if (isRunning) {
+            const interval = setInterval(save, 1500);
+            return () => {
+                clearInterval(interval);
+                save();
+            };
+        }
+        return () => save();
+    }, [isRunning, selectedScenario, simulationType]);
+
+    // Restore full simulation state when scenarios have loaded (e.g. after navigating back)
+    useEffect(() => {
+        if (scenarios.length === 0 || hasRestoredState.current) return;
+        try {
+            const raw = localStorage.getItem(SCENE_SIM_STORAGE_KEY);
+            if (!raw) return;
+            const saved = JSON.parse(raw);
+            const id = saved?.selectedScenarioId;
+            const mode = saved?.simulationType;
+            const running = Boolean(saved?.isRunning);
+
+            let scenario = null;
+            if (id) {
+                scenario = scenarios.find((s) => String(s.id) === id);
+            }
+
+            if (scenario) setSelectedScenario(scenario);
+            if (mode === 'ai_simulation' || mode === 'manual_driving') setSimulationType(mode);
+
+            // Restore refs so car/vehicles resume at saved positions
+            if (saved.playerPhysics && typeof saved.playerPhysics.x === 'number') {
+                playerPhysics.current = { ...saved.playerPhysics };
+            }
+            if (saved.camera && typeof saved.camera.zoom === 'number') {
+                cameraRef.current = { ...saved.camera };
+            }
+            if (saved.aiCamera && typeof saved.aiCamera.zoom === 'number') {
+                aiCameraRef.current = { ...saved.aiCamera };
+                skipCenterOnRestore.current = true;
+            }
+            if (Array.isArray(saved.vehicles) && saved.vehicles.length) {
+                vehiclesRef.current = saved.vehicles.map((v) => ({ ...v }));
+                setVehicles(vehiclesRef.current);
+            }
+            if (scenario && mode === 'ai_simulation' && scenario.roads?.length) {
+                roadSegmentsRef.current = buildRoadSegments(scenario.roads);
+            }
+            if (saved.playerPhysics && typeof saved.playerPhysics.speed === 'number') {
+                setHudSpeed(Math.abs(saved.playerPhysics.speed * 10).toFixed(0));
+            }
+
+            setIsRunning(running && !!scenario);
+        } catch (_) {
+            /* ignore parse errors */
+        }
+        hasRestoredState.current = true;
+    }, [scenarios]);
+
+    // Center camera on road network when scenario is selected (matches Scenario Builder layout)
+    useEffect(() => {
+        if (!selectedScenario?.roads?.length) return;
+        if (skipCenterOnRestore.current) {
+            skipCenterOnRestore.current = false;
+            return;
+        }
+        const center = getRoadNetworkCenter(selectedScenario.roads);
+        aiCameraRef.current = { x: -center.x, y: -center.y, zoom: 1 };
+    }, [selectedScenario]);
+
     // Clear canvas when no scenario is selected
     useEffect(() => {
         if (selectedScenario) return;
@@ -120,14 +232,14 @@ const SceneSimulation = () => {
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.key === 'ArrowUp' || e.key === 'w') keysPressed.current.up = true;
-            if (e.key === 'ArrowDown' || e.key === 's') keysPressed.current.down = true;
+            if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'Shift') keysPressed.current.down = true;
             if (e.key === 'ArrowLeft' || e.key === 'a') keysPressed.current.left = true;
             if (e.key === 'ArrowRight' || e.key === 'd') keysPressed.current.right = true;
             if (e.code === 'Space') keysPressed.current.boost = true;
         };
         const handleKeyUp = (e) => {
             if (e.key === 'ArrowUp' || e.key === 'w') keysPressed.current.up = false;
-            if (e.key === 'ArrowDown' || e.key === 's') keysPressed.current.down = false;
+            if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'Shift') keysPressed.current.down = false;
             if (e.key === 'ArrowLeft' || e.key === 'a') keysPressed.current.left = false;
             if (e.key === 'ArrowRight' || e.key === 'd') keysPressed.current.right = false;
             if (e.code === 'Space') keysPressed.current.boost = false;
@@ -296,16 +408,17 @@ const SceneSimulation = () => {
             const cam = isRunning && isManual ? cameraRef.current : aiCameraRef.current;
             drawScene(cam);
 
-            // HUD (screen space)
+            // HUD (screen space) – read speed from ref so it updates every frame
             if (isRunning && isManual) {
                 const p = playerPhysics.current;
+                const speedDisplay = Math.abs(p.speed * 10).toFixed(0);
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                 ctx.fillRect(10, 10, 200, 80);
                 ctx.fillStyle = '#fff';
                 ctx.font = '14px monospace';
-                ctx.fillText(`Speed: ${hudSpeed} km/h`, 20, 30);
+                ctx.fillText(`Speed: ${speedDisplay} km/h`, 20, 30);
                 ctx.fillText(`Position: (${p.x.toFixed(0)}, ${p.y.toFixed(0)})`, 20, 50);
-                ctx.fillText('WASD / Arrows • Space = boost', 20, 70);
+                ctx.fillText('WASD / Arrows • Space = boost • Shift = brake', 20, 70);
             }
 
             animationFrameId.current = requestAnimationFrame(animate);
@@ -620,7 +733,7 @@ const SceneSimulation = () => {
                                     </div>
                                     <div className="flex justify-between">
                                         <span>Brake:</span>
-                                        <span className="font-mono text-blue-400">↓ / S</span>
+                                        <span className="font-mono text-blue-400">↓ / S / Shift</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span>Steer:</span>
