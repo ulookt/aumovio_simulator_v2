@@ -491,11 +491,17 @@ const SceneSimulation = () => {
                 m.speedSamples.push(speedKmh);
                 if (speedKmh > m.maxSpeed) m.maxSpeed = speedKmh;
 
-                // Distance tracking
+                // Distance tracking - scale from pixels to meters
+                // Since speed * 10 = km/h, and speed is in pixels/frame,
+                // at 60fps: 1 km/h = 1000m/3600s = 0.278 m/s = 0.00463 m/frame
+                // If pixel_speed * 10 = km/h, then pixel_dist * (10/3.6) = meters per frame sum
+                // Simplified: multiply by ~2.78 to convert pixel distance to meters
                 if (m.lastPosition) {
                     const dx = p.x - m.lastPosition.x;
                     const dy = p.y - m.lastPosition.y;
-                    m.distanceTraveled += Math.hypot(dx, dy);
+                    const pixelDist = Math.hypot(dx, dy);
+                    // Convert pixel distance to meters (matching the speed unit conversion)
+                    m.distanceTraveled += pixelDist * 2.78;
                 }
                 m.lastPosition = { x: p.x, y: p.y };
 
