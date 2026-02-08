@@ -110,6 +110,10 @@ const SceneSimulation = () => {
     const cameraRef = useRef({ x: 0, y: 0, zoom: 1 });
     const vehiclesRef = useRef([]);
 
+    // AI Simulation: traffic light states (cycle every 3s to match backend)
+    const trafficLightStatesRef = useRef([]);
+    const lastTrafficLightToggleRef = useRef(0);
+
     useEffect(() => {
         loadScenarios();
     }, []);
@@ -303,16 +307,43 @@ const SceneSimulation = () => {
                 });
             }
 
-            // Traffic lights
+            // Traffic lights (use cycled state in AI sim when running, else stored state)
             if (scenario?.traffic_lights?.length) {
-                scenario.traffic_lights.forEach((light) => {
+                const lightStates = trafficLightStatesRef.current;
+                scenario.traffic_lights.forEach((light, i) => {
+                    const state = lightStates[i] ?? light.state ?? 'red';
                     ctx.fillStyle = '#1f2937';
                     ctx.fillRect(light.x - 5, light.y - 20, 10, 40);
-                    ctx.fillStyle = light.state === 'red' ? '#ef4444' : '#10b981';
+                    ctx.fillStyle =
+                        state === 'red'
+                            ? '#ef4444'
+                            : state === 'yellow'
+                              ? '#eab308'
+                              : '#10b981';
                     ctx.beginPath();
                     ctx.arc(light.x, light.y - 10, 4, 0, Math.PI * 2);
                     ctx.fill();
                 });
+            }
+
+            // AI Simulation: cycle traffic lights red → green → yellow → red (match backend)
+            if (isRunning && !isManual && scenario?.traffic_lights?.length) {
+                const now = performance.now();
+                const CYCLE = { red: 3000, green: 3000, yellow: 500 };
+                const NEXT = { red: 'green', green: 'yellow', yellow: 'red' };
+                if (trafficLightStatesRef.current.length !== scenario.traffic_lights.length) {
+                    trafficLightStatesRef.current = scenario.traffic_lights.map((l) => l.state || 'red');
+                    lastTrafficLightToggleRef.current = now;
+                } else {
+                    const elapsed = now - lastTrafficLightToggleRef.current;
+                    const currentState = trafficLightStatesRef.current[0] || 'red';
+                    const dur = CYCLE[currentState];
+                    if (elapsed >= dur) {
+                        const nextState = NEXT[currentState];
+                        trafficLightStatesRef.current = trafficLightStatesRef.current.map(() => nextState);
+                        lastTrafficLightToggleRef.current = now;
+                    }
+                }
             }
 
             // AI vehicles: follow road segments only (only when running)

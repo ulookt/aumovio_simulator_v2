@@ -72,10 +72,15 @@ def run_ai_simulation(self, job_id: str, scenario_data: dict):
                     db.add(telemetry_entry)
                     telemetry_data.append(telemetry_entry)
             
-            # Update traffic lights (cycle every 20 seconds)
-            if int(simulation_time) % 20 == 0:
-                for light in traffic_lights:
-                    light["state"] = "green" if light["state"] == "red" else "red"
+            # Update traffic lights (red → green → yellow → red)
+            cycle_pos = simulation_time % 6.5  # 3 + 3 + 0.5
+            for light in traffic_lights:
+                if cycle_pos < 3:
+                    light["state"] = "red"
+                elif cycle_pos < 6:
+                    light["state"] = "green"
+                else:
+                    light["state"] = "yellow"
             
             simulation_time += dt
             time.sleep(dt)  # Real-time simulation
