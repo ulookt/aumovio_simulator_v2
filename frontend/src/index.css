@@ -2,6 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Light mode - soft, pleasant colors */
+  --bg-primary: #f0f4f8;
+  --bg-card: #ffffff;
+  --bg-hover: #e8eef4;
+  --bg-canvas: #e2e8f0;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --border-color: #cbd5e1;
+  --grass-color: #86efac;
+  --grass-secondary: #4ade80;
+}
+
+.dark {
+  /* Dark mode - existing theme */
+  --bg-primary: #0f172a;
+  --bg-card: #1c273a;
+  --bg-hover: #334155;
+  --bg-canvas: #1a3150;
+  --text-primary: #ffffff;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --border-color: #334155;
+  --grass-color: #166534;
+  --grass-secondary: #14532d;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -9,8 +37,9 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #0f172a;
-  color: white;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 code {
@@ -20,4 +49,46 @@ code {
 
 * {
   box-sizing: border-box;
+}
+
+/* Theme-aware utility classes */
+.bg-theme-primary {
+  background-color: var(--bg-primary);
+}
+
+.bg-theme-card {
+  background-color: var(--bg-card);
+}
+
+.bg-theme-hover {
+  background-color: var(--bg-hover);
+}
+
+.bg-theme-canvas {
+  background-color: var(--bg-canvas);
+}
+
+.text-theme-primary {
+  color: var(--text-primary);
+}
+
+.text-theme-secondary {
+  color: var(--text-secondary);
+}
+
+.text-theme-muted {
+  color: var(--text-muted);
+}
+
+.border-theme {
+  border-color: var(--border-color);
+}
+
+/* Canvas/map colors for grass */
+.fill-grass {
+  fill: var(--grass-color);
+}
+
+.fill-grass-secondary {
+  fill: var(--grass-secondary);
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { scenariosAPI } from '@/services/api';
+import { useTheme } from '@/contexts/ThemeContext';
 import {
     MousePointer, Brush, Eraser, TrafficCone, Lightbulb,
     Octagon, Users, Play, Save, Settings, ZoomIn, ZoomOut, CircleDot, Trash2, Undo2, Redo2
@@ -16,6 +17,7 @@ const defaultScenario = () => ({
 });
 
 const ScenarioBuilder = () => {
+    const { isDarkMode } = useTheme();
     const canvasRef = React.useRef(null);
     const canvasContainerRef = React.useRef(null);
     const [tool, setTool] = React.useState('select');
@@ -143,8 +145,9 @@ const ScenarioBuilder = () => {
 
             const { width, height } = canvas;
 
-            // Clear background
-            ctx.fillStyle = '#0f172a';
+            // Clear background - theme aware
+            const bgColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-canvas').trim() || '#0f172a';
+            ctx.fillStyle = bgColor;
             ctx.fillRect(0, 0, width, height);
 
             ctx.save();
@@ -155,7 +158,8 @@ const ScenarioBuilder = () => {
 
             // Draw grid
             if (config.showGrid) {
-                ctx.strokeStyle = '#1e293b';
+                const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || '#1e293b';
+                ctx.strokeStyle = gridColor;
                 ctx.lineWidth = 1;
                 ctx.beginPath();
                 const step = config.gridSize;
@@ -545,7 +549,7 @@ const ScenarioBuilder = () => {
     return (
         <div className="flex h-[calc(100vh-100px)] gap-4">
             {/* Canvas */}
-            <div ref={canvasContainerRef} className="flex-1 bg-black rounded-xl overflow-hidden relative shadow-2xl border border-gray-800">
+            <div ref={canvasContainerRef} className="flex-1 bg-theme-canvas rounded-xl overflow-hidden relative shadow-2xl border border-theme transition-colors">
                 <canvas
                     ref={canvasRef}
                     onMouseDown={handleMouseDown}
@@ -561,14 +565,14 @@ const ScenarioBuilder = () => {
                 <div className="absolute top-4 right-4 flex flex-col gap-2">
                     <button
                         onClick={() => setCamera(p => ({ ...p, zoom: Math.min(3, p.zoom * 1.2) }))}
-                        className="p-2 bg-gray-800 rounded hover:bg-gray-700 text-white"
+                        className="p-2 bg-theme-card rounded hover:bg-theme-hover text-theme-primary border border-theme transition-colors"
                         title="Zoom in (or scroll up)"
                     >
                         <ZoomIn size={20} />
                     </button>
                     <button
                         onClick={() => setCamera(p => ({ ...p, zoom: Math.max(0.2, p.zoom / 1.2) }))}
-                        className="p-2 bg-gray-800 rounded hover:bg-gray-700 text-white"
+                        className="p-2 bg-theme-card rounded hover:bg-theme-hover text-theme-primary border border-theme transition-colors"
                         title="Zoom out (or scroll down)"
                     >
                         <ZoomOut size={20} />
@@ -586,9 +590,9 @@ const ScenarioBuilder = () => {
             </div>
 
             {/* Tools Panel */}
-            <div className="w-80 bg-card rounded-xl border border-border flex flex-col overflow-hidden">
-                <div className="p-4 border-b border-border bg-black/20">
-                    <h2 className="font-bold flex items-center gap-2 text-white">
+            <div className="w-80 bg-theme-card rounded-xl border border-theme flex flex-col overflow-hidden transition-colors">
+                <div className="p-4 border-b border-theme bg-theme-hover">
+                    <h2 className="font-bold flex items-center gap-2 text-theme-primary">
                         <Settings className="w-4 h-4 text-primary" />
                         Scenario Tools
                     </h2>

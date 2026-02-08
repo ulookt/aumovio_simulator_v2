@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { scenariosAPI, jobsAPI, metricsAPI } from '@/services/api';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Play, Pause, RotateCcw, Settings, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
 
 // Physics constants from old project – stable driving feel
@@ -233,7 +234,8 @@ const SceneSimulation = () => {
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-        ctx.fillStyle = '#0f172a';
+        const bgColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-canvas').trim() || '#0f172a';
+        ctx.fillStyle = bgColor;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }, [selectedScenario]);
 
@@ -288,7 +290,8 @@ const SceneSimulation = () => {
             ctx.translate(cam.x, cam.y);
 
             // Grid
-            ctx.strokeStyle = '#1e293b';
+            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || '#1e293b';
+            ctx.strokeStyle = gridColor;
             ctx.lineWidth = 1;
             ctx.beginPath();
             for (let x = -1000; x <= 1000; x += 50) {
@@ -412,7 +415,8 @@ const SceneSimulation = () => {
         };
 
         const animate = () => {
-            ctx.fillStyle = '#0f172a';
+            const bgColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-canvas').trim() || '#0f172a';
+            ctx.fillStyle = bgColor;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (isRunning && isManual) {
@@ -764,12 +768,12 @@ const SceneSimulation = () => {
             </div>
 
             <div className="grid grid-cols-3 gap-6">
-                <div ref={canvasContainerRef} className="col-span-2 bg-card rounded-xl overflow-hidden border border-border relative">
+                <div ref={canvasContainerRef} className="col-span-2 bg-theme-card rounded-xl overflow-hidden border border-theme relative transition-colors">
                     <canvas
                         ref={canvasRef}
-                        width={800}
-                        height={600}
-                        className="w-full h-auto bg-dark-bg block"
+                        width={1000}
+                        height={700}
+                        className="w-full h-auto bg-theme-canvas block"
                         onMouseDown={handleCanvasMouseDown}
                         onMouseMove={handleCanvasMouseMove}
                         onMouseUp={handleCanvasMouseUp}
@@ -808,15 +812,15 @@ const SceneSimulation = () => {
                     )}
                 </div>
 
-                <div className="bg-card p-6 rounded-xl border border-border">
-                    <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <div className="bg-theme-card p-6 rounded-xl border border-theme transition-colors">
+                    <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-theme-primary">
                         <Settings className="w-5 h-5 text-primary" />
                         Control Panel
                     </h2>
 
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
+                            <label className="block text-xs font-bold text-theme-muted uppercase mb-2">
                                 Select Scenario
                             </label>
                             <div className="flex gap-2">
@@ -827,7 +831,7 @@ const SceneSimulation = () => {
                                         const scenario = scenarios.find((s) => String(s.id) === id) ?? null;
                                         setSelectedScenario(scenario);
                                     }}
-                                    className="flex-1 px-3 py-2 bg-dark-bg border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
+                                    className="flex-1 px-3 py-2 bg-theme-hover border border-theme rounded-md text-theme-primary focus:outline-none focus:border-blue-500 transition-colors"
                                     disabled={isRunning}
                                 >
                                     <option value="">-- Choose Scenario --</option>
@@ -850,11 +854,11 @@ const SceneSimulation = () => {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
+                            <label className="block text-xs font-bold text-theme-muted uppercase mb-2">
                                 Simulation Mode
                             </label>
                             <div className="space-y-2">
-                                <label className="flex items-center p-3 bg-dark-bg rounded-lg border border-gray-700 cursor-pointer hover:bg-gray-800 transition-colors">
+                                <label className="flex items-center p-3 bg-theme-hover rounded-lg border border-theme cursor-pointer hover:opacity-80 transition-all">
                                     <input
                                         type="radio"
                                         value="ai_simulation"
@@ -865,10 +869,10 @@ const SceneSimulation = () => {
                                     />
                                     <div>
                                         <div className="font-medium">AI Simulation</div>
-                                        <div className="text-xs text-gray-400">Watch autonomous vehicles</div>
+                                        <div className="text-xs text-theme-muted">Watch autonomous vehicles</div>
                                     </div>
                                 </label>
-                                <label className="flex items-center p-3 bg-dark-bg rounded-lg border border-gray-700 cursor-pointer hover:bg-gray-800 transition-colors">
+                                <label className="flex items-center p-3 bg-theme-hover rounded-lg border border-theme cursor-pointer hover:opacity-80 transition-all">
                                     <input
                                         type="radio"
                                         value="manual_driving"
@@ -879,7 +883,7 @@ const SceneSimulation = () => {
                                     />
                                     <div>
                                         <div className="font-medium">Manual Driving</div>
-                                        <div className="text-xs text-gray-400">Drive on the drawn road (WASD)</div>
+                                        <div className="text-xs text-theme-muted">Drive on the drawn road (WASD)</div>
                                     </div>
                                 </label>
                             </div>
@@ -888,7 +892,7 @@ const SceneSimulation = () => {
                         {simulationType === 'manual_driving' && (
                             <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                                 <h3 className="font-semibold mb-2 text-blue-400">Controls</h3>
-                                <div className="text-sm text-gray-300 space-y-1">
+                                <div className="text-sm text-theme-secondary space-y-1">
                                     <div className="flex justify-between">
                                         <span>Accelerate:</span>
                                         <span className="font-mono text-blue-400">↑ / W</span>
@@ -905,7 +909,7 @@ const SceneSimulation = () => {
                                         <span>Boost:</span>
                                         <span className="font-mono text-blue-400">SPACE</span>
                                     </div>
-                                    <p className="text-xs text-gray-400 mt-2">Car spawns on the start of the first road.</p>
+                                    <p className="text-xs text-theme-muted mt-2">Car spawns on the start of the first road.</p>
                                 </div>
                             </div>
                         )}
@@ -913,7 +917,7 @@ const SceneSimulation = () => {
                         {isRunning && (
                             <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
                                 <h3 className="font-semibold mb-2 text-green-400">Simulation Active</h3>
-                                <div className="text-sm text-gray-300">
+                                <div className="text-sm text-theme-secondary">
                                     <div>Vehicles: {vehicles.length}</div>
                                     <div>Mode: {simulationType === 'ai_simulation' ? 'AI' : 'Manual'}</div>
                                     {simulationType === 'manual_driving' && (

@@ -196,12 +196,12 @@ const MetricsAnalytics = () => {
     const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4'];
 
     const JobSelector = () => (
-        <div className="bg-dark-card p-4 rounded-lg">
+        <div className="bg-theme-card p-4 rounded-lg">
             <label className="block text-sm font-medium mb-2">Select Job</label>
             <select
                 value={selectedJobId}
                 onChange={(e) => setSelectedJobId(e.target.value)}
-                className="w-full max-w-md px-3 py-2 bg-dark-bg border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
+                className="w-full max-w-md px-3 py-2 bg-theme-hover border border-theme rounded-md text-theme-primary focus:outline-none focus:border-blue-500"
             >
                 <option value="">-- Choose Job --</option>
                 {jobs.map((job) => (
@@ -222,28 +222,28 @@ const MetricsAnalytics = () => {
                 <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 border border-blue-500/30 p-4 rounded-lg">
                     <div className="flex items-center gap-2 mb-1">
                         <Activity size={18} className="text-blue-400" />
-                        <span className="text-sm text-gray-400">Total Jobs</span>
+                        <span className="text-sm text-theme-muted">Total Jobs</span>
                     </div>
                     <div className="text-2xl font-bold text-blue-400">{aggregateStats.totalJobs}</div>
                 </div>
                 <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 border border-green-500/30 p-4 rounded-lg">
                     <div className="flex items-center gap-2 mb-1">
                         <Shield size={18} className="text-green-400" />
-                        <span className="text-sm text-gray-400">Avg Safety</span>
+                        <span className="text-sm text-theme-muted">Avg Safety</span>
                     </div>
                     <div className="text-2xl font-bold text-green-400">{aggregateStats.avgSafetyScore.toFixed(0)}%</div>
                 </div>
                 <div className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 border border-purple-500/30 p-4 rounded-lg">
                     <div className="flex items-center gap-2 mb-1">
                         <Brain size={18} className="text-purple-400" />
-                        <span className="text-sm text-gray-400">AI Simulations</span>
+                        <span className="text-sm text-theme-muted">AI Simulations</span>
                     </div>
                     <div className="text-2xl font-bold text-purple-400">{aggregateStats.aiJobs}</div>
                 </div>
                 <div className="bg-gradient-to-br from-orange-600/20 to-orange-800/20 border border-orange-500/30 p-4 rounded-lg">
                     <div className="flex items-center gap-2 mb-1">
                         <Car size={18} className="text-orange-400" />
-                        <span className="text-sm text-gray-400">Manual Drives</span>
+                        <span className="text-sm text-theme-muted">Manual Drives</span>
                     </div>
                     <div className="text-2xl font-bold text-orange-400">{aggregateStats.manualJobs}</div>
                 </div>
@@ -254,8 +254,8 @@ const MetricsAnalytics = () => {
                 <button
                     onClick={() => setActiveTab('driving')}
                     className={`px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-all ${activeTab === 'driving'
-                        ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg shadow-green-600/30'
-                        : 'bg-dark-card text-gray-300 hover:bg-dark-hover'
+                        ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-theme-primary shadow-lg shadow-green-600/30'
+                        : 'bg-theme-card text-theme-secondary hover:bg-theme-hover'
                         }`}
                 >
                     <Car size={18} />
@@ -264,8 +264,8 @@ const MetricsAnalytics = () => {
                 <button
                     onClick={() => setActiveTab('telemetry')}
                     className={`px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-all ${activeTab === 'telemetry'
-                        ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-600/30'
-                        : 'bg-dark-card text-gray-300 hover:bg-dark-hover'
+                        ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-theme-primary shadow-lg shadow-blue-600/30'
+                        : 'bg-theme-card text-theme-secondary hover:bg-theme-hover'
                         }`}
                 >
                     <Activity size={18} />
@@ -274,8 +274,8 @@ const MetricsAnalytics = () => {
                 <button
                     onClick={() => setActiveTab('safety')}
                     className={`px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-all ${activeTab === 'safety'
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/30'
-                        : 'bg-dark-card text-gray-300 hover:bg-dark-hover'
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-theme-primary shadow-lg shadow-emerald-600/30'
+                        : 'bg-theme-card text-theme-secondary hover:bg-theme-hover'
                         }`}
                 >
                     <Shield size={18} />
@@ -284,8 +284,8 @@ const MetricsAnalytics = () => {
                 <button
                     onClick={() => setActiveTab('insights')}
                     className={`px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-all ${activeTab === 'insights'
-                        ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-white shadow-lg shadow-purple-600/30'
-                        : 'bg-dark-card text-gray-300 hover:bg-dark-hover'
+                        ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-theme-primary shadow-lg shadow-purple-600/30'
+                        : 'bg-theme-card text-theme-secondary hover:bg-theme-hover'
                         }`}
                 >
                     <Brain size={18} />
@@ -298,12 +298,12 @@ const MetricsAnalytics = () => {
                 <div className="space-y-6">
                     {/* Scenario and Session Selector */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-dark-card p-4 rounded-lg">
+                        <div className="bg-theme-card p-4 rounded-lg">
                             <label className="block text-sm font-medium mb-2">Select Scenario</label>
                             <select
                                 value={selectedScenarioId}
                                 onChange={(e) => setSelectedScenarioId(e.target.value)}
-                                className="w-full px-3 py-2 bg-dark-bg border border-gray-600 rounded-md text-white focus:outline-none focus:border-green-500"
+                                className="w-full px-3 py-2 bg-theme-hover border border-theme rounded-md text-theme-primary focus:outline-none focus:border-green-500"
                             >
                                 <option value="">-- Choose Scenario --</option>
                                 {scenarios.map((scenario) => (
@@ -313,13 +313,13 @@ const MetricsAnalytics = () => {
                                 ))}
                             </select>
                         </div>
-                        <div className="bg-dark-card p-4 rounded-lg">
+                        <div className="bg-theme-card p-4 rounded-lg">
                             <label className="block text-sm font-medium mb-2">Select Driving Session</label>
                             <select
                                 value={selectedJobId}
                                 onChange={(e) => setSelectedJobId(e.target.value)}
                                 disabled={!selectedScenarioId}
-                                className="w-full px-3 py-2 bg-dark-bg border border-gray-600 rounded-md text-white focus:outline-none focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full px-3 py-2 bg-theme-hover border border-theme rounded-md text-theme-primary focus:outline-none focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <option value="">{selectedScenarioId ? '-- Choose Session --' : '-- Select a scenario first --'}</option>
                                 {scenarioSessions.map((session, index) => (
@@ -338,20 +338,20 @@ const MetricsAnalytics = () => {
                         <>
                             {/* Metrics Cards */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div className="bg-dark-card p-4 rounded-lg border-l-4 border-red-500">
+                                <div className="bg-theme-card p-4 rounded-lg border-l-4 border-red-500">
                                     <div className="flex items-center gap-2 mb-2">
                                         <Route size={20} className="text-red-400" />
-                                        <span className="text-sm text-gray-400">Off-Road Events</span>
+                                        <span className="text-sm text-theme-muted">Off-Road Events</span>
                                     </div>
                                     <div className="text-3xl font-bold text-red-400">
                                         {drivingStats.off_road_count}
                                     </div>
                                 </div>
 
-                                <div className="bg-dark-card p-4 rounded-lg border-l-4 border-orange-500">
+                                <div className="bg-theme-card p-4 rounded-lg border-l-4 border-orange-500">
                                     <div className="flex items-center gap-2 mb-2">
                                         <AlertTriangle size={20} className="text-orange-400" />
-                                        <span className="text-sm text-gray-400">Light Violations</span>
+                                        <span className="text-sm text-theme-muted">Light Violations</span>
                                     </div>
                                     <div className="text-3xl font-bold text-orange-400">
                                         {drivingStats.red_light_violations + drivingStats.yellow_light_violations}
@@ -361,20 +361,20 @@ const MetricsAnalytics = () => {
                                     </div>
                                 </div>
 
-                                <div className="bg-dark-card p-4 rounded-lg border-l-4 border-green-500">
+                                <div className="bg-theme-card p-4 rounded-lg border-l-4 border-green-500">
                                     <div className="flex items-center gap-2 mb-2">
                                         <Gauge size={20} className="text-green-400" />
-                                        <span className="text-sm text-gray-400">Turn Smoothness</span>
+                                        <span className="text-sm text-theme-muted">Turn Smoothness</span>
                                     </div>
                                     <div className="text-3xl font-bold text-green-400">
                                         {drivingStats.turn_smoothness_score.toFixed(0)}/100
                                     </div>
                                 </div>
 
-                                <div className="bg-dark-card p-4 rounded-lg border-l-4 border-blue-500">
+                                <div className="bg-theme-card p-4 rounded-lg border-l-4 border-blue-500">
                                     <div className="flex items-center gap-2 mb-2">
                                         <Zap size={20} className="text-blue-400" />
-                                        <span className="text-sm text-gray-400">Max Speed</span>
+                                        <span className="text-sm text-theme-muted">Max Speed</span>
                                     </div>
                                     <div className="text-3xl font-bold text-blue-400">
                                         {drivingStats.max_speed.toFixed(0)} km/h
@@ -384,23 +384,23 @@ const MetricsAnalytics = () => {
 
                             {/* Secondary Stats */}
                             <div className="grid grid-cols-3 gap-4">
-                                <div className="bg-dark-card p-4 rounded-lg">
+                                <div className="bg-theme-card p-4 rounded-lg">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <Clock size={16} className="text-gray-400" />
-                                        <span className="text-sm text-gray-400">Duration</span>
+                                        <Clock size={16} className="text-theme-muted" />
+                                        <span className="text-sm text-theme-muted">Duration</span>
                                     </div>
                                     <div className="text-xl font-semibold">
                                         {Math.floor(drivingStats.duration_seconds / 60)}m {Math.floor(drivingStats.duration_seconds % 60)}s
                                     </div>
                                 </div>
-                                <div className="bg-dark-card p-4 rounded-lg">
-                                    <span className="text-sm text-gray-400">Avg Speed</span>
+                                <div className="bg-theme-card p-4 rounded-lg">
+                                    <span className="text-sm text-theme-muted">Avg Speed</span>
                                     <div className="text-xl font-semibold">
                                         {drivingStats.avg_speed.toFixed(1)} km/h
                                     </div>
                                 </div>
-                                <div className="bg-dark-card p-4 rounded-lg">
-                                    <span className="text-sm text-gray-400">Distance</span>
+                                <div className="bg-theme-card p-4 rounded-lg">
+                                    <span className="text-sm text-theme-muted">Distance</span>
                                     <div className="text-xl font-semibold">
                                         {(drivingStats.distance_traveled / 100).toFixed(1)} m
                                     </div>
@@ -408,7 +408,7 @@ const MetricsAnalytics = () => {
                             </div>
 
                             {/* AI Feedback Section */}
-                            <div className="bg-dark-card p-6 rounded-lg">
+                            <div className="bg-theme-card p-6 rounded-lg">
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
                                         <MessageSquare size={20} className="text-purple-400" />
@@ -423,8 +423,8 @@ const MetricsAnalytics = () => {
                                     </button>
                                 </div>
                                 {drivingFeedback ? (
-                                    <div className="prose prose-invert max-w-none bg-dark-bg p-4 rounded-md">
-                                        <p className="text-gray-300 whitespace-pre-wrap">{drivingFeedback}</p>
+                                    <div className="prose prose-invert max-w-none bg-theme-hover p-4 rounded-md">
+                                        <p className="text-theme-secondary whitespace-pre-wrap">{drivingFeedback}</p>
                                     </div>
                                 ) : (
                                     <p className="text-gray-500 italic">
@@ -434,9 +434,9 @@ const MetricsAnalytics = () => {
                             </div>
                         </>
                     ) : (
-                        <div className="bg-dark-card p-8 rounded-lg text-center">
+                        <div className="bg-theme-card p-8 rounded-lg text-center">
                             <Car size={48} className="mx-auto text-gray-500 mb-4" />
-                            <p className="text-gray-400">
+                            <p className="text-theme-muted">
                                 Select a scenario and driving session to view your performance metrics.
                             </p>
                             <p className="text-gray-500 text-sm mt-2">
@@ -454,7 +454,7 @@ const MetricsAnalytics = () => {
 
                     {selectedJobId && telemetry.length > 0 ? (
                         <>
-                            <div className="bg-dark-card p-6 rounded-lg">
+                            <div className="bg-theme-card p-6 rounded-lg">
                                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                                     <TrendingUp className="text-blue-400" />
                                     Speed Over Time
@@ -477,7 +477,7 @@ const MetricsAnalytics = () => {
                                 </ResponsiveContainer>
                             </div>
 
-                            <div className="bg-dark-card p-6 rounded-lg">
+                            <div className="bg-theme-card p-6 rounded-lg">
                                 <h3 className="text-lg font-semibold mb-4">Brake Intensity</h3>
                                 <ResponsiveContainer width="100%" height={300}>
                                     <AreaChart data={chartData}>
@@ -570,26 +570,26 @@ const MetricsAnalytics = () => {
                     <JobSelector />
 
                     {selectedJobId && safetyData ? (
-                        <div className="bg-dark-card p-6 rounded-lg">
+                        <div className="bg-theme-card p-6 rounded-lg">
                             <h3 className="text-lg font-semibold mb-4">Safety Metrics</h3>
                             <div className="grid grid-cols-3 gap-4">
-                                <div className="bg-dark-bg p-4 rounded-md">
+                                <div className="bg-theme-hover p-4 rounded-md">
                                     <div className="text-3xl font-bold text-green-400">
                                         {safetyData.overall_safety_score?.toFixed(1) || 0}/100
                                     </div>
-                                    <div className="text-sm text-gray-400 mt-1">Overall Safety Score</div>
+                                    <div className="text-sm text-theme-muted mt-1">Overall Safety Score</div>
                                 </div>
-                                <div className="bg-dark-bg p-4 rounded-md">
+                                <div className="bg-theme-hover p-4 rounded-md">
                                     <div className="text-3xl font-bold text-yellow-400">
                                         {safetyData.near_miss_count || 0}
                                     </div>
-                                    <div className="text-sm text-gray-400 mt-1">Near Misses</div>
+                                    <div className="text-sm text-theme-muted mt-1">Near Misses</div>
                                 </div>
-                                <div className="bg-dark-bg p-4 rounded-md">
+                                <div className="bg-theme-hover p-4 rounded-md">
                                     <div className="text-3xl font-bold text-orange-400">
                                         {safetyData.hazard_exposure_score?.toFixed(1) || 0}
                                     </div>
-                                    <div className="text-sm text-gray-400 mt-1">Hazard Exposure</div>
+                                    <div className="text-sm text-theme-muted mt-1">Hazard Exposure</div>
                                 </div>
                             </div>
                         </div>
@@ -667,13 +667,13 @@ const MetricsAnalytics = () => {
                     <JobSelector />
 
                     {selectedJobId && insights && insights !== 'No AI insights available' ? (
-                        <div className="bg-dark-card p-6 rounded-lg">
+                        <div className="bg-theme-card p-6 rounded-lg">
                             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                                 <Brain className="text-purple-400" />
                                 AI-Generated Insights
                             </h3>
                             <div className="prose prose-invert max-w-none">
-                                <p className="text-gray-300 whitespace-pre-wrap">{insights}</p>
+                                <p className="text-theme-secondary whitespace-pre-wrap">{insights}</p>
                             </div>
                         </div>
                     ) : (
@@ -727,14 +727,14 @@ const MetricsAnalytics = () => {
                                     <MessageSquare className="text-violet-400" />
                                     AI Analysis Preview
                                 </h3>
-                                <div className="bg-dark-bg/50 p-4 rounded-md border border-purple-500/10">
-                                    <p className="text-gray-300 leading-relaxed">
+                                <div className="bg-theme-hover/50 p-4 rounded-md border border-purple-500/10">
+                                    <p className="text-theme-secondary leading-relaxed">
                                         <span className="text-purple-400 font-semibold">🤖 Based on your simulations:</span><br /><br />
                                         Your overall driving performance shows a <span className="text-green-400">positive trend</span> with improvements in lane keeping and speed control.
                                         Areas for improvement include following distance in high-traffic scenarios and reaction time to sudden hazards.
                                         <br /><br />
                                         <span className="text-blue-400">Key recommendations:</span>
-                                        <ul className="list-disc list-inside mt-2 space-y-1 text-gray-400">
+                                        <ul className="list-disc list-inside mt-2 space-y-1 text-theme-muted">
                                             <li>Practice defensive driving techniques</li>
                                             <li>Increase awareness in intersection scenarios</li>
                                             <li>Work on smooth acceleration transitions</li>

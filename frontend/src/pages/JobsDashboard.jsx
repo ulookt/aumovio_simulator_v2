@@ -114,7 +114,7 @@ const JobsDashboard = () => {
     return (
         <div>
             <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-                <h1 className="text-3xl font-bold">Jobs Dashboard</h1>
+                <h1 className="text-3xl font-bold text-theme-primary">Jobs Dashboard</h1>
                 <div className="flex flex-wrap items-center gap-2">
                     <button
                         onClick={handleBulkDownload}
@@ -143,9 +143,9 @@ const JobsDashboard = () => {
                 </div>
             </div>
 
-            <div className="bg-dark-card rounded-lg overflow-hidden">
+            <div className="bg-theme-card rounded-lg overflow-hidden border border-theme transition-colors">
                 <table className="w-full">
-                    <thead className="bg-dark-bg">
+                    <thead className="bg-theme-hover">
                         <tr>
                             <th className="px-4 py-3 text-left">
                                 <input
@@ -155,39 +155,39 @@ const JobsDashboard = () => {
                                     className="rounded border-gray-500"
                                 />
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider">
                                 Job ID
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider">
                                 Type
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider">
                                 Status
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider">
                                 Duration
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider">
                                 Vehicles
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider">
                                 Weather
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider">
                                 Cost
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider">
                                 Created
                             </th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-right text-xs font-medium text-theme-muted uppercase tracking-wider">
                                 Actions
                             </th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-700">
+                    <tbody className="divide-y divide-theme">
                         {jobs.length === 0 ? (
                             <tr>
-                                <td colSpan="10" className="px-6 py-8 text-center text-gray-400">
+                                <td colSpan="10" className="px-6 py-8 text-center text-theme-muted">
                                     No jobs found. Create a simulation to get started!
                                 </td>
                             </tr>
@@ -195,54 +195,54 @@ const JobsDashboard = () => {
                             jobs.map((job) => {
                                 const id = jobIdStr(job);
                                 return (
-                                <tr key={id} className="hover:bg-dark-hover">
-                                    <td className="px-4 py-4">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedIds.has(id)}
-                                            onChange={() => toggleSelect(id)}
-                                            className="rounded border-gray-500"
-                                        />
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-mono">
-                                        {id.substring(0, 8)}...
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                        <span className={`capitalize ${job.simulation_type === 'ai_simulation' ? 'text-blue-400' : 'text-green-400'}`}>
-                                            {job.simulation_type.replace('_', ' ')}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(job.status)} bg-opacity-20 text-white`}>
-                                            {job.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                        {job.duration_seconds}s
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                        {job.vehicle_count}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm capitalize">
-                                        {job.weather || 'N/A'}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                        ${job.compute_cost_estimate.toFixed(2)}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                                        {new Date(job.created_at).toLocaleString()}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                                        <button
-                                            onClick={() => handleDelete(job)}
-                                            disabled={deletingId === id}
-                                            className="p-2 text-red-400 hover:bg-red-500/20 rounded transition-colors disabled:opacity-50"
-                                            title="Delete job"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </td>
-                                </tr>
+                                    <tr key={id} className="hover:bg-theme-hover transition-colors">
+                                        <td className="px-4 py-4">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.has(id)}
+                                                onChange={() => toggleSelect(id)}
+                                                className="rounded border-gray-500"
+                                            />
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono">
+                                            {id.substring(0, 8)}...
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            <span className={`capitalize ${job.simulation_type === 'ai_simulation' ? 'text-blue-400' : 'text-green-400'}`}>
+                                                {job.simulation_type.replace('_', ' ')}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(job.status)} bg-opacity-20 text-white`}>
+                                                {job.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            {job.duration_seconds}s
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            {job.vehicle_count}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm capitalize">
+                                            {job.weather || 'N/A'}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            ${job.compute_cost_estimate.toFixed(2)}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-theme-muted">
+                                            {new Date(job.created_at).toLocaleString()}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                                            <button
+                                                onClick={() => handleDelete(job)}
+                                                disabled={deletingId === id}
+                                                className="p-2 text-red-400 hover:bg-red-500/20 rounded transition-colors disabled:opacity-50"
+                                                title="Delete job"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </td>
+                                    </tr>
                                 );
                             })
                         )}
@@ -251,7 +251,7 @@ const JobsDashboard = () => {
             </div>
 
             {loading && (
-                <div className="mt-4 text-center text-gray-400 text-sm">
+                <div className="mt-4 text-center text-theme-muted text-sm">
                     Refreshing...
                 </div>
             )}
