@@ -336,11 +336,24 @@ const ScenarioBuilder = () => {
         return () => cancelAnimationFrame(animationFrameId);
     }, [camera, scenario, config, isPreviewing, tool, pointPath, brushSize]);
 
-    // Mouse helpers
+    // Mouse helpers - convert screen coordinates to world coordinates
+    // Must invert the camera transform: translate(center) -> scale(zoom) -> translate(-center + camera)
+    // Also account for CSS scaling between display size and canvas internal size
     const getPos = (e) => {
-        const rect = canvasRef.current.getBoundingClientRect();
-        const x = (e.clientX - rect.left - rect.width / 2) / camera.zoom + rect.width / 2 - camera.x;
-        const y = (e.clientY - rect.top - rect.height / 2) / camera.zoom + rect.height / 2 - camera.y;
+        const canvas = canvasRef.current;
+        const rect = canvas.getBoundingClientRect();
+        // CSS scaling factors (display size vs canvas internal size)
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        // Get mouse position in canvas internal coordinates
+        const canvasX = (e.clientX - rect.left) * scaleX;
+        const canvasY = (e.clientY - rect.top) * scaleY;
+        // Canvas center in internal coordinates
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        // Invert the camera transform
+        const x = (canvasX - centerX) / camera.zoom + centerX - camera.x;
+        const y = (canvasY - centerY) / camera.zoom + centerY - camera.y;
         return { x, y };
     };
 
@@ -367,14 +380,16 @@ const ScenarioBuilder = () => {
             }));
         } else if (tool === 'eraser') {
             const p = getPos(e);
+            // Eraser radius scales with zoom so it feels consistent
+            const eraserRadius = 30 / camera.zoom;
             pushHistory(scenario);
             setScenario(prev => ({
                 ...prev,
                 strokes: prev.strokes.filter(r =>
-                    r.points.every(pt => Math.hypot(pt.x - p.x, pt.y - p.y) > 30)
+                    r.points.every(pt => Math.hypot(pt.x - p.x, pt.y - p.y) > eraserRadius)
                 ),
                 objects: prev.objects.filter(o =>
-                    Math.hypot(o.x - p.x, o.y - p.y) > 30
+                    Math.hypot(o.x - p.x, o.y - p.y) > eraserRadius
                 )
             }));
         }

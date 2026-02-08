@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { scenariosAPI, jobsAPI } from '@/services/api';
+import { scenariosAPI, jobsAPI, metricsAPI } from '@/services/api';
 import { Play, Pause, RotateCcw, Settings, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
 
 // Physics constants from old project – stable driving feel
@@ -113,6 +113,22 @@ const SceneSimulation = () => {
     // AI Simulation: traffic light states (cycle every 3s to match backend)
     const trafficLightStatesRef = useRef([]);
     const lastTrafficLightToggleRef = useRef(0);
+
+    // Manual Driving: metrics tracking
+    const currentJobIdRef = useRef(null);
+    const metricsRef = useRef({
+        startTime: 0,
+        offRoadCount: 0,
+        wasOnRoad: true,  // Track transitions to only count once per exit
+        redLightViolations: 0,
+        yellowLightViolations: 0,
+        steeringAngles: [],  // For smoothness calculation
+        maxSpeed: 0,
+        speedSamples: [],
+        lastPosition: null,
+        distanceTraveled: 0,
+        passedLights: new Set(),  // Track which lights we've passed to avoid double-counting
+    });
 
     useEffect(() => {
         loadScenarios();
@@ -430,6 +446,55 @@ const SceneSimulation = () => {
                     zoom: 1,
                 };
 
+                // === METRICS TRACKING (Manual Driving only) ===
+                const m = metricsRef.current;
+
+                // Off-road detection: count transitions from on-road to off-road
+                if (!onRoad && m.wasOnRoad) {
+                    m.offRoadCount++;
+                }
+                m.wasOnRoad = onRoad;
+
+                // Traffic light violation detection
+                if (scenario?.traffic_lights?.length) {
+                    const lightStates = trafficLightStatesRef.current;
+                    scenario.traffic_lights.forEach((light, i) => {
+                        const dist = Math.hypot(p.x - light.x, p.y - light.y);
+                        const lightKey = `light_${i}`;
+                        // If within 25px of light center and haven't passed this light yet
+                        if (dist < 25 && !m.passedLights.has(lightKey)) {
+                            const state = lightStates[i] ?? light.state ?? 'red';
+                            if (state === 'red') {
+                                m.redLightViolations++;
+                            } else if (state === 'yellow') {
+                                m.yellowLightViolations++;
+                            }
+                            m.passedLights.add(lightKey);
+                        }
+                        // Reset when far from light so it can be counted again if approached again
+                        if (dist > 60) {
+                            m.passedLights.delete(lightKey);
+                        }
+                    });
+                }
+
+                // Steering tracking for smoothness
+                m.steeringAngles.push(p.angle);
+                if (m.steeringAngles.length > 100) m.steeringAngles.shift();  // Keep last 100
+
+                // Speed tracking
+                const speedKmh = Math.abs(p.speed * 10);
+                m.speedSamples.push(speedKmh);
+                if (speedKmh > m.maxSpeed) m.maxSpeed = speedKmh;
+
+                // Distance tracking
+                if (m.lastPosition) {
+                    const dx = p.x - m.lastPosition.x;
+                    const dy = p.y - m.lastPosition.y;
+                    m.distanceTraveled += Math.hypot(dx, dy);
+                }
+                m.lastPosition = { x: p.x, y: p.y };
+
                 frameCount.current++;
                 if (frameCount.current % 10 === 0) {
                     setHudSpeed(Math.abs(p.speed * 10).toFixed(0));
@@ -579,25 +644,91 @@ const SceneSimulation = () => {
             };
             cameraRef.current = { x: -spawn.x, y: -spawn.y, zoom: 1 };
             setHudSpeed(0);
+
+            // Reset metrics for new Manual Driving session
+            metricsRef.current = {
+                startTime: Date.now(),
+                offRoadCount: 0,
+                wasOnRoad: true,
+                redLightViolations: 0,
+                yellowLightViolations: 0,
+                steeringAngles: [],
+                maxSpeed: 0,
+                speedSamples: [],
+                lastPosition: null,
+                distanceTraveled: 0,
+                passedLights: new Set(),
+            };
         }
 
         setIsRunning(true);
 
+        // Create job and store ID for metrics submission
         jobsAPI.create({
             scenario_id: selectedScenario.id,
             simulation_type: simulationType,
             duration_seconds: 60,
             vehicle_count: numVehicles,
+        }).then((res) => {
+            currentJobIdRef.current = res.data.id;
         }).catch((err) => console.error('Failed to create job:', err));
     };
 
-    const pauseSimulation = () => setIsRunning(false);
+    // Calculate turn smoothness score (0-100, higher = smoother)
+    const calculateSmoothnessScore = (angles) => {
+        if (angles.length < 2) return 100;
+        let totalVariation = 0;
+        for (let i = 1; i < angles.length; i++) {
+            let diff = Math.abs(angles[i] - angles[i - 1]);
+            // Normalize angle difference to handle wrapping
+            if (diff > Math.PI) diff = 2 * Math.PI - diff;
+            totalVariation += diff;
+        }
+        const avgVariation = totalVariation / (angles.length - 1);
+        // Convert to 0-100 score (lower variation = higher score)
+        // avgVariation of 0 = 100, avgVariation of 0.1 (harsh steering) = 0
+        const score = Math.max(0, Math.min(100, 100 - avgVariation * 1000));
+        return score;
+    };
+
+    const pauseSimulation = async () => {
+        setIsRunning(false);
+
+        // Submit driving stats for Manual Driving mode
+        if (simulationType === 'manual_driving' && currentJobIdRef.current && selectedScenario) {
+            const m = metricsRef.current;
+            const durationSeconds = (Date.now() - m.startTime) / 1000;
+            const avgSpeed = m.speedSamples.length > 0
+                ? m.speedSamples.reduce((a, b) => a + b, 0) / m.speedSamples.length
+                : 0;
+            const smoothnessScore = calculateSmoothnessScore(m.steeringAngles);
+
+            try {
+                await metricsAPI.submitDrivingStats({
+                    job_id: currentJobIdRef.current,
+                    scenario_id: selectedScenario.id,
+                    off_road_count: m.offRoadCount,
+                    red_light_violations: m.redLightViolations,
+                    yellow_light_violations: m.yellowLightViolations,
+                    turn_smoothness_score: smoothnessScore,
+                    duration_seconds: durationSeconds,
+                    max_speed: m.maxSpeed,
+                    avg_speed: avgSpeed,
+                    distance_traveled: m.distanceTraveled,
+                });
+                console.log('Driving stats submitted successfully');
+            } catch (err) {
+                console.error('Failed to submit driving stats:', err);
+            }
+        }
+    };
 
     const resetSimulation = () => {
         setIsRunning(false);
         setVehicles([]);
         vehiclesRef.current = [];
         setHudSpeed(0);
+        currentJobIdRef.current = null;
     };
 
     return (

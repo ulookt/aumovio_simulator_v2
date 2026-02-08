@@ -10,6 +10,7 @@ from app.models.scenario import Scenario
 from app.models.telemetry import Telemetry
 from app.models.safety_risk import SafetyRisk
 from app.models.assistant import AssistantMessage
+from app.models.driving_stats import DrivingStats
 from app.schemas.job import JobCreate, JobResponse
 from app.tasks.simulation_tasks import run_ai_simulation
 
@@ -105,7 +106,7 @@ def update_job_status(
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_job(job_id: UUID, db: Session = Depends(get_db)):
-    """Delete a job and its related telemetry, safety_risks, and assistant_messages"""
+    """Delete a job and its related telemetry, safety_risks, assistant_messages, and driving_stats"""
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -113,6 +114,7 @@ def delete_job(job_id: UUID, db: Session = Depends(get_db)):
     db.query(Telemetry).filter(Telemetry.job_id == job_id).delete()
     db.query(SafetyRisk).filter(SafetyRisk.job_id == job_id).delete()
     db.query(AssistantMessage).filter(AssistantMessage.job_id == job_id).delete()
+    db.query(DrivingStats).filter(DrivingStats.job_id == job_id).delete()
     db.delete(job)
     db.commit()
     return None

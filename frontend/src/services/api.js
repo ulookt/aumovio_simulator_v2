@@ -33,7 +33,14 @@ export const metricsAPI = {
     getTelemetry: (jobId) => api.get(`/api/metrics/telemetry/${jobId}`),
     getSafety: (jobId) => api.get(`/api/metrics/safety/${jobId}`),
     getInsights: (jobId) => api.get(`/api/metrics/insights/${jobId}`),
+
+    // Driving stats (Manual Driving metrics)
+    submitDrivingStats: (data) => api.post('/api/metrics/driving-stats', data),
+    getDrivingStats: (jobId) => api.get(`/api/metrics/driving-stats/${jobId}`),
+    getScenarioSessions: (scenarioId) => api.get(`/api/metrics/driving-stats/scenario/${scenarioId}`),
+    generateFeedback: (jobId) => api.post(`/api/metrics/driving-stats/${jobId}/generate-feedback`),
 };
+
 
 // Assistant
 export const assistantAPI = {
