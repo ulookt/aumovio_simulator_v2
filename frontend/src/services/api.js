@@ -24,6 +24,7 @@ export const jobsAPI = {
     list: (statusFilter) => api.get('/api/jobs/', { params: { status_filter: statusFilter } }),
     get: (id) => api.get(`/api/jobs/${id}`),
     updateStatus: (id, status) => api.patch(`/api/jobs/${id}/status`, null, { params: { new_status: status } }),
+    delete: (id) => api.delete(`/api/jobs/${id}`),
 };
 
 // Metrics

@@ -43,6 +43,9 @@ const ScenarioBuilder = () => {
         showGrid: true
     });
 
+    // Brush (road) width for drawing – resizable
+    const [brushSize, setBrushSize] = React.useState(40);
+
     const currentPath = React.useRef([]);
     const isDrawing = React.useRef(false);
     const agents = React.useRef([]);
@@ -185,7 +188,7 @@ const ScenarioBuilder = () => {
                 for (let i = 1; i < currentPath.current.length; i++) {
                     ctx.lineTo(currentPath.current[i].x, currentPath.current[i].y);
                 }
-                ctx.lineWidth = 40;
+                ctx.lineWidth = brushSize;
                 ctx.strokeStyle = '#475569';
                 ctx.stroke();
             }
@@ -200,7 +203,7 @@ const ScenarioBuilder = () => {
                     for (let i = 1; i < pointPath.length; i++) {
                         ctx.lineTo(pointPath[i].x, pointPath[i].y);
                     }
-                    ctx.lineWidth = 40;
+                    ctx.lineWidth = brushSize;
                     ctx.strokeStyle = '#475569';
                     ctx.stroke();
                     ctx.lineWidth = 2;
@@ -319,7 +322,7 @@ const ScenarioBuilder = () => {
 
         render();
         return () => cancelAnimationFrame(animationFrameId);
-    }, [camera, scenario, config, isPreviewing, tool, pointPath]);
+    }, [camera, scenario, config, isPreviewing, tool, pointPath, brushSize]);
 
     // Mouse helpers
     const getPos = (e) => {
@@ -376,8 +379,8 @@ const ScenarioBuilder = () => {
         }
     };
 
-    // Distance within which a new stroke is considered "connected" to an existing road
-    const CONNECT_THRESHOLD = 40;
+    // Distance within which a new stroke is considered "connected" to an existing road (use brush size)
+    const CONNECT_THRESHOLD = brushSize;
     const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
     const isNear = (a, b) => dist(a, b) <= CONNECT_THRESHOLD;
 
@@ -410,7 +413,7 @@ const ScenarioBuilder = () => {
                 if (isNear(newEnd, re)) { endRoadIdx = i; endConnectsToStart = false; break; }
             }
 
-            const width = 40;
+            const width = brushSize;
 
             if (startRoadIdx >= 0 && endRoadIdx >= 0 && startRoadIdx !== endRoadIdx) {
                 const roadA = strokes[startRoadIdx];
@@ -535,8 +538,8 @@ const ScenarioBuilder = () => {
                 {/* Tool indicator */}
                 <div className="absolute top-4 left-4 bg-black/50 backdrop-blur px-3 py-1 rounded text-xs text-gray-300">
                     {tool === 'select' && 'Pan Mode (Drag to Move)'}
-                    {tool === 'road' && 'Road Tool — Draw freehand'}
-                    {tool === 'road-points' && 'Draw by points — Click to add, double-click to finish'}
+                    {tool === 'road' && `Road — Freehand (brush: ${brushSize})`}
+                    {tool === 'road-points' && `Draw by points (brush: ${brushSize})`}
                     {tool === 'eraser' && 'Eraser Tool Active'}
                     {['light', 'stop', 'ped', 'obs'].includes(tool) && `${tool} Tool Active`}
                 </div>
@@ -621,6 +624,26 @@ const ScenarioBuilder = () => {
                                 Complete line ({pointPath.length} points)
                             </button>
                         )}
+
+                        {/* Brush size – road width when drawing */}
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
+                                Brush size (road width)
+                            </label>
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="range"
+                                    min={16}
+                                    max={100}
+                                    step={2}
+                                    value={brushSize}
+                                    onChange={(e) => setBrushSize(Number(e.target.value))}
+                                    className="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
+                                />
+                                <span className="text-sm font-mono text-gray-300 w-10">{brushSize}</span>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1">Adjust before or while drawing</p>
+                        </div>
                     </div>
 
                     {/* Traffic Controls */}

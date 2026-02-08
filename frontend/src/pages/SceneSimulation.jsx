@@ -1,15 +1,59 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { scenariosAPI, jobsAPI } from '@/services/api';
-import { Play, Pause, RotateCcw, Settings } from 'lucide-react';
+import { Play, Pause, RotateCcw, Settings, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
 
-// Physics constants from old project (InteractiveDriving) – stable driving feel
+// Physics constants from old project – stable driving feel
 const DRIVING_CONFIG = {
     ACCEL: 0.13,
     BRAKE: 0.35,
     FRICTION_ROAD: 0.98,
+    FRICTION_GRASS: 0.90,
     TURN_SPEED: 0.05,
     MAX_SPEED: 8.0,
+    MAX_SPEED_GRASS: 3.5,
 };
+
+// Build flat list of road segments from scenario roads (for AI path-following)
+function buildRoadSegments(roads) {
+    if (!roads?.length) return [];
+    const segs = [];
+    roads.forEach((road) => {
+        const pts = road?.points;
+        const w = road?.width ?? 40;
+        if (!pts || pts.length < 2) return;
+        for (let i = 0; i < pts.length - 1; i++) {
+            const x1 = pts[i].x, y1 = pts[i].y, x2 = pts[i + 1].x, y2 = pts[i + 1].y;
+            const len = Math.hypot(x2 - x1, y2 - y1) || 1;
+            segs.push({ x1, y1, x2, y2, len, width: w });
+        }
+    });
+    return segs;
+}
+
+// Distance from point (px,py) to segment (x1,y1,x2,y2)
+function distToSegment(px, py, x1, y1, x2, y2) {
+    const dx = x2 - x1, dy = y2 - y1;
+    const len2 = dx * dx + dy * dy;
+    if (len2 === 0) return Math.hypot(px - x1, py - y1);
+    let t = ((px - x1) * dx + (py - y1) * dy) / len2;
+    t = Math.max(0, Math.min(1, t));
+    const nx = x1 + t * dx, ny = y1 + t * dy;
+    return Math.hypot(px - nx, py - ny);
+}
+
+function isOnRoad(px, py, roads) {
+    if (!roads?.length) return false;
+    for (const road of roads) {
+        const pts = road?.points;
+        const halfW = (road?.width ?? 40) / 2;
+        if (!pts || pts.length < 2) continue;
+        for (let i = 0; i < pts.length - 1; i++) {
+            const d = distToSegment(px, py, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y);
+            if (d <= halfW) return true;
+        }
+    }
+    return false;
+}
 
 // Car dimensions scaled to fit road width ~40: same proportions as old project (30x16)
 const CAR_WIDTH = 24;
@@ -27,6 +71,13 @@ const SceneSimulation = () => {
     const keysPressed = useRef({});
     const animationFrameId = useRef(null);
     const frameCount = useRef(0);
+    const roadSegmentsRef = useRef([]); // AI: flat list of segments
+
+    // AI mode: camera pan/zoom (user-controlled; ref so loop reads current value)
+    const aiCameraRef = useRef({ x: 0, y: 0, zoom: 1 });
+    const isPanning = useRef(false);
+    const [isDraggingMap, setIsDraggingMap] = useState(false);
+    const lastMouse = useRef({ x: 0, y: 0 });
 
     // Manual driving: refs only (no setState per frame) so animation loop stays stable
     const playerPhysics = useRef({
@@ -42,6 +93,29 @@ const SceneSimulation = () => {
     useEffect(() => {
         loadScenarios();
     }, []);
+
+    // Clear canvas when no scenario is selected
+    useEffect(() => {
+        if (selectedScenario) return;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }, [selectedScenario]);
+
+    // Prevent page scroll when zooming canvas in AI mode
+    const canvasContainerRef = useRef(null);
+    useEffect(() => {
+        const el = canvasContainerRef.current;
+        if (!el || simulationType !== 'ai_simulation' || !selectedScenario) return;
+        const onWheel = (e) => {
+            if (el.contains(e.target)) e.preventDefault();
+        };
+        el.addEventListener('wheel', onWheel, { passive: false });
+        return () => el.removeEventListener('wheel', onWheel);
+    }, [simulationType, selectedScenario]);
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -67,8 +141,7 @@ const SceneSimulation = () => {
     }, []);
 
     useEffect(() => {
-        if (!isRunning) return;
-
+        if (!selectedScenario) return;
         const canvas = canvasRef.current;
         if (!canvas) return;
 
@@ -130,12 +203,23 @@ const SceneSimulation = () => {
                 });
             }
 
-            // AI vehicles
-            if (!isManual && vehiclesRef.current.length) {
+            // AI vehicles: follow road segments only (only when running)
+            const segs = roadSegmentsRef.current;
+            if (isRunning && !isManual && vehiclesRef.current.length && segs.length) {
                 vehiclesRef.current.forEach((v) => {
-                    v.x += Math.cos(v.angle) * v.speed;
-                    v.y += Math.sin(v.angle) * v.speed;
-                    if (Math.random() < 0.02) v.angle += (Math.random() - 0.5) * 0.2;
+                    const seg = segs[v.segmentIdx];
+                    if (!seg) return;
+                    v.progress += (v.speed / seg.len) * 0.1;
+                    if (v.progress >= 1) {
+                        v.segmentIdx = (v.segmentIdx + 1) % segs.length;
+                        v.progress = 0;
+                    }
+                    const seg2 = segs[v.segmentIdx];
+                    const sx = seg2.x1 + (seg2.x2 - seg2.x1) * v.progress;
+                    const sy = seg2.y1 + (seg2.y2 - seg2.y1) * v.progress;
+                    v.x = sx;
+                    v.y = sy;
+                    v.angle = Math.atan2(seg2.y2 - seg2.y1, seg2.x2 - seg2.x1);
                     ctx.save();
                     ctx.translate(v.x, v.y);
                     ctx.rotate(v.angle);
@@ -147,8 +231,8 @@ const SceneSimulation = () => {
                 });
             }
 
-            // Player car (manual) – red car from old project, scaled to road
-            if (isManual) {
+            // Player car (manual) – red car from old project, scaled to road (only when running)
+            if (isRunning && isManual) {
                 const p = playerPhysics.current;
                 ctx.save();
                 ctx.translate(p.x, p.y);
@@ -172,18 +256,21 @@ const SceneSimulation = () => {
             ctx.fillStyle = '#0f172a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            if (isManual) {
+            if (isRunning && isManual) {
                 const p = playerPhysics.current;
                 const inp = keysPressed.current;
                 const cfg = DRIVING_CONFIG;
+                const onRoad = scenario?.roads && isOnRoad(p.x, p.y, scenario.roads);
+                p.friction = onRoad ? cfg.FRICTION_ROAD : cfg.FRICTION_GRASS;
+                const maxSpeed = onRoad ? cfg.MAX_SPEED : cfg.MAX_SPEED_GRASS;
 
                 if (inp.up) p.speed += cfg.ACCEL;
                 if (inp.down) p.speed -= cfg.BRAKE;
                 if (inp.boost) p.speed += cfg.ACCEL * 2;
 
                 p.speed *= p.friction;
-                if (Math.abs(p.speed) > cfg.MAX_SPEED) {
-                    p.speed = Math.sign(p.speed) * cfg.MAX_SPEED;
+                if (Math.abs(p.speed) > maxSpeed) {
+                    p.speed = Math.sign(p.speed) * maxSpeed;
                 }
 
                 if (Math.abs(p.speed) > 0.1) {
@@ -206,10 +293,11 @@ const SceneSimulation = () => {
                 }
             }
 
-            drawScene(cameraRef.current);
+            const cam = isRunning && isManual ? cameraRef.current : aiCameraRef.current;
+            drawScene(cam);
 
             // HUD (screen space)
-            if (isManual) {
+            if (isRunning && isManual) {
                 const p = playerPhysics.current;
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                 ctx.fillRect(10, 10, 200, 80);
@@ -240,6 +328,56 @@ const SceneSimulation = () => {
         }
     };
 
+    const handleDeleteScenario = async () => {
+        if (!selectedScenario) return;
+        if (!window.confirm(`Delete scenario "${selectedScenario.name}"? This cannot be undone.`)) return;
+        const idToDelete = String(selectedScenario.id);
+        try {
+            await scenariosAPI.delete(idToDelete);
+            setSelectedScenario(null);
+            await loadScenarios();
+        } catch (error) {
+            console.error('Failed to delete scenario:', error);
+            const msg = error.response?.data?.detail ?? error.message ?? 'Failed to delete scenario';
+            alert(typeof msg === 'string' ? msg : JSON.stringify(msg));
+        }
+    };
+
+    // AI mode: pan with mouse drag, zoom with wheel (allow when scenario selected, running or not)
+    const handleCanvasMouseDown = (e) => {
+        if (simulationType === 'ai_simulation' && selectedScenario) {
+            isPanning.current = true;
+            setIsDraggingMap(true);
+            lastMouse.current = { x: e.clientX, y: e.clientY };
+        }
+    };
+    const handleCanvasMouseMove = (e) => {
+        if (isPanning.current) {
+            const dx = e.clientX - lastMouse.current.x;
+            const dy = e.clientY - lastMouse.current.y;
+            aiCameraRef.current = {
+                ...aiCameraRef.current,
+                x: aiCameraRef.current.x + dx,
+                y: aiCameraRef.current.y + dy,
+            };
+            lastMouse.current = { x: e.clientX, y: e.clientY };
+        }
+    };
+    const handleCanvasMouseUp = () => {
+        isPanning.current = false;
+        setIsDraggingMap(false);
+    };
+    const handleCanvasWheel = (e) => {
+        if (simulationType === 'ai_simulation' && selectedScenario) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            aiCameraRef.current = {
+                ...aiCameraRef.current,
+                zoom: Math.max(0.2, Math.min(3, aiCameraRef.current.zoom * delta)),
+            };
+        }
+    };
+
     const getSpawnOnFirstRoad = (scenario) => {
         const roads = scenario?.roads;
         if (!roads?.length) return { x: 0, y: 0, angle: 0 };
@@ -259,20 +397,34 @@ const SceneSimulation = () => {
         }
 
         const numVehicles = simulationType === 'ai_simulation' ? 5 : 3;
-        const spawned = [];
-        for (let i = 0; i < numVehicles; i++) {
-            spawned.push({
-                x: Math.random() * 400 - 200,
-                y: Math.random() * 400 - 200,
-                angle: Math.random() * Math.PI * 2,
-                speed: 1 + Math.random() * 2,
-                color: `hsl(${Math.random() * 360}, 70%, 60%)`,
-            });
-        }
-        vehiclesRef.current = spawned;
-        setVehicles(spawned);
+        const roads = selectedScenario.roads;
 
-        if (simulationType === 'manual_driving') {
+        if (simulationType === 'ai_simulation') {
+            const segs = buildRoadSegments(roads);
+            roadSegmentsRef.current = segs;
+            const spawned = [];
+            if (segs.length) {
+                for (let i = 0; i < numVehicles; i++) {
+                    const segIdx = i % segs.length;
+                    const seg = segs[segIdx];
+                    spawned.push({
+                        segmentIdx: segIdx,
+                        progress: 0,
+                        speed: 1.2 + Math.random() * 1.5,
+                        color: `hsl(${Math.random() * 360}, 70%, 60%)`,
+                        x: seg.x1,
+                        y: seg.y1,
+                        angle: Math.atan2(seg.y2 - seg.y1, seg.x2 - seg.x1),
+                    });
+                }
+            }
+            vehiclesRef.current = spawned;
+            setVehicles(spawned);
+            aiCameraRef.current = { x: 0, y: 0, zoom: 1 };
+        } else {
+            roadSegmentsRef.current = [];
+            vehiclesRef.current = [];
+            setVehicles([]);
             const spawn = getSpawnOnFirstRoad(selectedScenario);
             playerPhysics.current = {
                 x: spawn.x,
@@ -337,13 +489,48 @@ const SceneSimulation = () => {
             </div>
 
             <div className="grid grid-cols-3 gap-6">
-                <div className="col-span-2 bg-card rounded-xl overflow-hidden border border-border">
+                <div ref={canvasContainerRef} className="col-span-2 bg-card rounded-xl overflow-hidden border border-border relative">
                     <canvas
                         ref={canvasRef}
                         width={800}
                         height={600}
-                        className="w-full h-auto bg-dark-bg"
+                        className="w-full h-auto bg-dark-bg block"
+                        onMouseDown={handleCanvasMouseDown}
+                        onMouseMove={handleCanvasMouseMove}
+                        onMouseUp={handleCanvasMouseUp}
+                        onMouseLeave={handleCanvasMouseUp}
+                        onWheel={handleCanvasWheel}
+                        style={{ cursor: simulationType === 'ai_simulation' && isRunning ? (isDraggingMap ? 'grabbing' : 'grab') : 'default' }}
                     />
+                    {simulationType === 'ai_simulation' && isRunning && (
+                        <div className="absolute top-2 right-2 flex flex-col gap-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    aiCameraRef.current = { ...aiCameraRef.current, zoom: Math.min(3, aiCameraRef.current.zoom * 1.2) };
+                                }}
+                                className="p-2 bg-gray-800/90 hover:bg-gray-700 rounded text-white"
+                                title="Zoom in"
+                            >
+                                <ZoomIn size={20} />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    aiCameraRef.current = { ...aiCameraRef.current, zoom: Math.max(0.2, aiCameraRef.current.zoom / 1.2) };
+                                }}
+                                className="p-2 bg-gray-800/90 hover:bg-gray-700 rounded text-white"
+                                title="Zoom out"
+                            >
+                                <ZoomOut size={20} />
+                            </button>
+                        </div>
+                    )}
+                    {simulationType === 'ai_simulation' && isRunning && (
+                        <div className="absolute top-2 left-2 bg-black/50 backdrop-blur px-2 py-1 rounded text-xs text-gray-300">
+                            Drag to pan • Scroll or buttons to zoom
+                        </div>
+                    )}
                 </div>
 
                 <div className="bg-card p-6 rounded-xl border border-border">
@@ -357,22 +544,34 @@ const SceneSimulation = () => {
                             <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
                                 Select Scenario
                             </label>
-                            <select
-                                value={selectedScenario?.id || ''}
-                                onChange={(e) => {
-                                    const scenario = scenarios.find((s) => s.id === e.target.value);
-                                    setSelectedScenario(scenario);
-                                }}
-                                className="w-full px-3 py-2 bg-dark-bg border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
-                                disabled={isRunning}
-                            >
-                                <option value="">-- Choose Scenario --</option>
-                                {scenarios.map((scenario) => (
-                                    <option key={scenario.id} value={scenario.id}>
-                                        {scenario.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="flex gap-2">
+                                <select
+                                    value={selectedScenario ? String(selectedScenario.id) : ''}
+                                    onChange={(e) => {
+                                        const id = e.target.value;
+                                        const scenario = scenarios.find((s) => String(s.id) === id) ?? null;
+                                        setSelectedScenario(scenario);
+                                    }}
+                                    className="flex-1 px-3 py-2 bg-dark-bg border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
+                                    disabled={isRunning}
+                                >
+                                    <option value="">-- Choose Scenario --</option>
+                                    {scenarios.map((scenario) => (
+                                        <option key={String(scenario.id)} value={String(scenario.id)}>
+                                            {scenario.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <button
+                                    type="button"
+                                    onClick={handleDeleteScenario}
+                                    disabled={!selectedScenario || isRunning}
+                                    className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-md border border-red-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Delete scenario"
+                                >
+                                    <Trash2 size={20} />
+                                </button>
+                            </div>
                         </div>
 
                         <div>

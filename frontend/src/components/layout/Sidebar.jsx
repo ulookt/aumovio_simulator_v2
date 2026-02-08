@@ -8,8 +8,8 @@ const Sidebar = () => {
     const navItems = [
         { path: '/scenario-builder', label: 'Scenario Builder', icon: MapPin },
         { path: '/simulation', label: 'Scene Simulation', icon: LayoutDashboard },
-        { path: '/jobs', label: 'Jobs Dashboard', icon: Cpu },
         { path: '/metrics', label: 'Metrics & Analytics', icon: BarChart3 },
+        { path: '/jobs', label: 'Jobs Dashboard', icon: Cpu },
     ];
 
     return (
