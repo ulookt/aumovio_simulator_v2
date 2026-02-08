@@ -149,17 +149,21 @@ Session #{stats.session_number}
 - Off-road events: {stats.off_road_count} times
 - Red light violations: {stats.red_light_violations}
 - Yellow light violations: {stats.yellow_light_violations}
-- Turn smoothness score: {stats.turn_smoothness_score:.1f}/100
 - Duration: {stats.duration_seconds:.1f} seconds
 - Max speed: {stats.max_speed:.1f} km/h
 - Average speed: {stats.avg_speed:.1f} km/h
 - Distance traveled: {stats.distance_traveled:.1f} meters
+- Turn smoothness score: {stats.turn_smoothness_score:.1f}/100
 
 Please provide:
 1. An overall driving grade (A-F)
 2. Specific strengths observed
 3. Areas for improvement
 4. 2-3 actionable tips to become a better driver
+
+IMPORTANT GUIDELINES:
+- **Prioritize safety**: Off-road events and red light violations should heavily impact the grade.
+- **Turn smoothness**: This metric is often high, so please **do not weigh it heavily** in your evaluation. Only mention it briefly at the end as a minor point. Do not let good turn smoothness mask poor safety behavior.
 
 Keep the feedback encouraging but honest. Format nicely with emojis."""
 

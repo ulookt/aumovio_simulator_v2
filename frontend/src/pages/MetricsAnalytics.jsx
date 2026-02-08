@@ -402,7 +402,7 @@ const MetricsAnalytics = () => {
                                 <div className="bg-theme-card p-4 rounded-lg">
                                     <span className="text-sm text-theme-muted">Distance</span>
                                     <div className="text-xl font-semibold">
-                                        {(drivingStats.distance_traveled / 100).toFixed(1)} m
+                                        {drivingStats.distance_traveled.toFixed(1)} m
                                     </div>
                                 </div>
                             </div>

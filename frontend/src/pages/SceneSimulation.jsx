@@ -708,9 +708,13 @@ const SceneSimulation = () => {
         if (simulationType === 'manual_driving' && currentJobIdRef.current && selectedScenario) {
             const m = metricsRef.current;
             const durationSeconds = (Date.now() - m.startTime) / 1000;
-            const avgSpeed = m.speedSamples.length > 0
-                ? m.speedSamples.reduce((a, b) => a + b, 0) / m.speedSamples.length
+
+            // Calculate average speed directly from distance and time to ensure d = v * t
+            // avg_speed (km/h) = (distance (m) / 1000) / (time (s) / 3600)
+            const avgSpeed = durationSeconds > 0
+                ? (m.distanceTraveled / 1000) / (durationSeconds / 3600)
                 : 0;
+
             const smoothnessScore = calculateSmoothnessScore(m.steeringAngles);
 
             try {
