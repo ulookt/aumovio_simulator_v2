@@ -2,8 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { scenariosAPI } from '@/services/api';
 import {
     MousePointer, Brush, Eraser, TrafficCone, Lightbulb,
-    Octagon, Users, Play, Save, Settings, ZoomIn, ZoomOut, CircleDot, Trash2
+    Octagon, Users, Play, Save, Settings, ZoomIn, ZoomOut, CircleDot, Trash2, Undo2, Redo2
 } from 'lucide-react';
+
+const DRAFT_STORAGE_KEY = 'aumovio_scenario_builder_draft';
+
+const defaultScenario = () => ({
+    name: 'New Scenario',
+    strokes: [],
+    objects: [],
+    weather: 'clear',
+    weatherIntensity: 0.5
+});
 
 const ScenarioBuilder = () => {
     const canvasRef = React.useRef(null);
@@ -13,13 +23,18 @@ const ScenarioBuilder = () => {
     const [lastPos, setLastPos] = React.useState({ x: 0, y: 0 });
     const [isPreviewing, setIsPreviewing] = React.useState(false);
 
-    // Scenario data
-    const [scenario, setScenario] = React.useState({
-        name: 'New Scenario',
-        strokes: [],
-        objects: [],
-        weather: 'clear',
-        weatherIntensity: 0.5
+    // Scenario data (persisted to localStorage so it survives navigation)
+    const [scenario, setScenario] = React.useState(() => {
+        try {
+            const s = localStorage.getItem(DRAFT_STORAGE_KEY);
+            if (s) {
+                const d = JSON.parse(s);
+                if (d && Array.isArray(d.strokes) && Array.isArray(d.objects)) {
+                    return { ...defaultScenario(), ...d };
+                }
+            }
+        } catch (_) {}
+        return defaultScenario();
     });
 
     const [config, setConfig] = React.useState({
@@ -33,6 +48,67 @@ const ScenarioBuilder = () => {
     const agents = React.useRef([]);
     // Points placed in "draw by points" mode (click to add, double-click or button to finish)
     const [pointPath, setPointPath] = React.useState([]);
+
+    // Undo / Redo: stacks of states (strokes + objects only)
+    const historyRef = React.useRef([]);
+    const redoRef = React.useRef([]);
+    const MAX_HISTORY = 50;
+
+    const makeSnapshot = (state) => ({
+        strokes: state.strokes.map(s => ({ ...s, points: s.points.map(p => ({ ...p })) })),
+        objects: state.objects.map(o => ({ ...o }))
+    });
+
+    const pushHistory = (state) => {
+        redoRef.current = []; // new action clears redo
+        const snapshot = makeSnapshot(state);
+        historyRef.current.push(snapshot);
+        if (historyRef.current.length > MAX_HISTORY) historyRef.current.shift();
+    };
+
+    const [undoRedoVersion, setUndoRedoVersion] = React.useState(0); // re-render so Undo/Redo buttons update
+
+    const undo = () => {
+        if (historyRef.current.length === 0) return;
+        const currentSnapshot = makeSnapshot(scenario);
+        redoRef.current.push(currentSnapshot);
+        const prevState = historyRef.current.pop();
+        setScenario(s => ({
+            ...s,
+            strokes: prevState.strokes,
+            objects: prevState.objects
+        }));
+        setUndoRedoVersion(v => v + 1);
+    };
+
+    const redo = () => {
+        if (redoRef.current.length === 0) return;
+        const currentSnapshot = makeSnapshot(scenario);
+        historyRef.current.push(currentSnapshot);
+        const nextState = redoRef.current.pop();
+        setScenario(s => ({
+            ...s,
+            strokes: nextState.strokes,
+            objects: nextState.objects
+        }));
+        setUndoRedoVersion(v => v + 1);
+    };
+
+    const canUndo = historyRef.current.length > 0;
+    const canRedo = redoRef.current.length > 0;
+
+    // Persist draft to localStorage when scenario changes (so it survives navigation)
+    useEffect(() => {
+        try {
+            localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({
+                name: scenario.name,
+                strokes: scenario.strokes,
+                objects: scenario.objects,
+                weather: scenario.weather,
+                weatherIntensity: scenario.weatherIntensity
+            }));
+        } catch (_) {}
+    }, [scenario.name, scenario.strokes, scenario.objects, scenario.weather, scenario.weatherIntensity]);
 
     // Render canvas
     useEffect(() => {
@@ -264,6 +340,7 @@ const ScenarioBuilder = () => {
             setPointPath(prev => [...prev, getPos(e)]);
         } else if (['light', 'stop', 'ped', 'obs'].includes(tool)) {
             const p = getPos(e);
+            pushHistory(scenario);
             setScenario(prev => ({
                 ...prev,
                 objects: [...prev.objects, {
@@ -275,6 +352,7 @@ const ScenarioBuilder = () => {
             }));
         } else if (tool === 'eraser') {
             const p = getPos(e);
+            pushHistory(scenario);
             setScenario(prev => ({
                 ...prev,
                 strokes: prev.strokes.filter(r =>
@@ -308,6 +386,7 @@ const ScenarioBuilder = () => {
         const newStart = pathToSave[0];
         const newEnd = pathToSave[pathToSave.length - 1];
         setScenario(prev => {
+            pushHistory(prev);
             const strokes = [...prev.strokes];
             let startRoadIdx = -1;
             let startConnectsToEnd = false;
@@ -389,6 +468,7 @@ const ScenarioBuilder = () => {
 
     const clearMap = () => {
         if (window.confirm('Clear the entire map? All roads and objects will be removed.')) {
+            pushHistory(scenario);
             setScenario(prev => ({ ...prev, strokes: [], objects: [] }));
             setPointPath([]);
             currentPath.current = [];
@@ -626,6 +706,26 @@ const ScenarioBuilder = () => {
 
                     {/* Actions */}
                     <div className="pt-4 border-t border-gray-700">
+                        <div className="grid grid-cols-2 gap-2 mb-2">
+                            <button
+                                onClick={undo}
+                                disabled={!canUndo}
+                                title={canUndo ? `Undo last action (${historyRef.current.length} in history)` : 'Nothing to undo'}
+                                className="py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all border border-gray-600 text-gray-300 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Undo2 size={18} />
+                                Undo
+                            </button>
+                            <button
+                                onClick={redo}
+                                disabled={!canRedo}
+                                title={canRedo ? `Redo (${redoRef.current.length} in redo)` : 'Nothing to redo'}
+                                className="py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all border border-gray-600 text-gray-300 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Redo2 size={18} />
+                                Redo
+                            </button>
+                        </div>
                         <button
                             onClick={clearMap}
                             className="w-full py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all mb-2 border border-red-500/50 text-red-400 hover:bg-red-500/20"
