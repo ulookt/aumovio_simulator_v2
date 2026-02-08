@@ -9,7 +9,7 @@ from app.models.safety_risk import SafetyRisk
 from app.models.job import Job
 from app.schemas.telemetry import TelemetryCreate, TelemetryResponse
 
-router = APIRouter(prefix="/api/metrics", tags=["metrics"])
+router = APIRouter(prefix="/metrics", tags=["metrics"])
 
 @router.post("/telemetry", response_model=TelemetryResponse, status_code=status.HTTP_201_CREATED)
 def create_telemetry(telemetry: TelemetryCreate, db: Session = Depends(get_db)):

@@ -9,17 +9,32 @@ from app.models.job import Job
 from app.models.telemetry import Telemetry
 from app.schemas.assistant import ChatRequest, ChatResponse
 
-router = APIRouter(prefix="/api/assistant", tags=["assistant"])
+router = APIRouter(prefix="/assistant", tags=["assistant"])
 
 def get_openai_client():
     """Get OpenAI client (lazy import to avoid errors if API key not set)"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     try:
         from openai import OpenAI
         api_key = os.getenv("OPENAI_API_KEY")
+        
         if not api_key:
+            logger.warning("OpenAI API key not found in environment")
             return None
-        return OpenAI(api_key=api_key)
-    except Exception:
+        
+        if api_key == "your_openai_api_key_here":
+            logger.warning("OpenAI API key is still set to default placeholder value")
+            return None
+            
+        logger.info(f"Initializing OpenAI client with key: {api_key[:10]}...")
+        client = OpenAI(api_key=api_key)
+        logger.info("OpenAI client initialized successfully")
+        return client
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize OpenAI client: {str(e)}")
         return None
 
 @router.post("/chat", response_model=ChatResponse)

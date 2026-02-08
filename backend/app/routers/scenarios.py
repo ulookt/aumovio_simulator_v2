@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models.scenario import Scenario
 from app.schemas.scenario import ScenarioCreate, ScenarioUpdate, ScenarioResponse
 
-router = APIRouter(prefix="/api/scenarios", tags=["scenarios"])
+router = APIRouter(prefix="/scenarios", tags=["scenarios"])
 
 @router.post("/", response_model=ScenarioResponse, status_code=status.HTTP_201_CREATED)
 def create_scenario(scenario: ScenarioCreate, db: Session = Depends(get_db)):

@@ -5,11 +5,12 @@ from uuid import UUID
 from datetime import datetime
 
 from app.database import get_db
-from app.models.job import Job, JobStatus
+from app.models.job import Job, JobStatus, SimulationType
 from app.models.scenario import Scenario
 from app.schemas.job import JobCreate, JobResponse
+from app.tasks.simulation_tasks import run_ai_simulation
 
-router = APIRouter(prefix="/api/jobs", tags=["jobs"])
+router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 @router.post("/", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
 def create_job(job: JobCreate, db: Session = Depends(get_db)):
