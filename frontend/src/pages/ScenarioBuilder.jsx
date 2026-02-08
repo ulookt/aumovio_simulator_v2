@@ -17,6 +17,7 @@ const defaultScenario = () => ({
 
 const ScenarioBuilder = () => {
     const canvasRef = React.useRef(null);
+    const canvasContainerRef = React.useRef(null);
     const [tool, setTool] = React.useState('select');
     const [camera, setCamera] = React.useState({ x: 0, y: 0, zoom: 1 });
     const [isDragging, setIsDragging] = React.useState(false);
@@ -33,7 +34,7 @@ const ScenarioBuilder = () => {
                     return { ...defaultScenario(), ...d };
                 }
             }
-        } catch (_) {}
+        } catch (_) { }
         return defaultScenario();
     });
 
@@ -110,8 +111,19 @@ const ScenarioBuilder = () => {
                 weather: scenario.weather,
                 weatherIntensity: scenario.weatherIntensity
             }));
-        } catch (_) {}
+        } catch (_) { }
     }, [scenario.name, scenario.strokes, scenario.objects, scenario.weather, scenario.weatherIntensity]);
+
+    // Prevent page scroll when zooming canvas with scroll wheel
+    React.useEffect(() => {
+        const el = canvasContainerRef.current;
+        if (!el) return;
+        const onWheel = (e) => {
+            if (el.contains(e.target)) e.preventDefault();
+        };
+        el.addEventListener('wheel', onWheel, { passive: false });
+        return () => el.removeEventListener('wheel', onWheel);
+    }, []);
 
     // Render canvas
     useEffect(() => {
@@ -462,6 +474,16 @@ const ScenarioBuilder = () => {
         }
     };
 
+    // Handle scroll wheel zoom (same as Scene Simulation)
+    const handleWheel = (e) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        setCamera(prev => ({
+            ...prev,
+            zoom: Math.max(0.2, Math.min(3, prev.zoom * delta))
+        }));
+    };
+
     const handleDoubleClick = (e) => {
         if (tool === 'road-points' && pointPath.length >= 2) {
             e.preventDefault();
@@ -508,7 +530,7 @@ const ScenarioBuilder = () => {
     return (
         <div className="flex h-[calc(100vh-100px)] gap-4">
             {/* Canvas */}
-            <div className="flex-1 bg-black rounded-xl overflow-hidden relative shadow-2xl border border-gray-800">
+            <div ref={canvasContainerRef} className="flex-1 bg-black rounded-xl overflow-hidden relative shadow-2xl border border-gray-800">
                 <canvas
                     ref={canvasRef}
                     onMouseDown={handleMouseDown}
@@ -516,20 +538,23 @@ const ScenarioBuilder = () => {
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
                     onDoubleClick={handleDoubleClick}
+                    onWheel={handleWheel}
                     className="w-full h-full cursor-crosshair"
                 />
 
                 {/* Zoom controls */}
                 <div className="absolute top-4 right-4 flex flex-col gap-2">
                     <button
-                        onClick={() => setCamera(p => ({ ...p, zoom: p.zoom * 1.2 }))}
+                        onClick={() => setCamera(p => ({ ...p, zoom: Math.min(3, p.zoom * 1.2) }))}
                         className="p-2 bg-gray-800 rounded hover:bg-gray-700 text-white"
+                        title="Zoom in (or scroll up)"
                     >
                         <ZoomIn size={20} />
                     </button>
                     <button
-                        onClick={() => setCamera(p => ({ ...p, zoom: p.zoom / 1.2 }))}
+                        onClick={() => setCamera(p => ({ ...p, zoom: Math.max(0.2, p.zoom / 1.2) }))}
                         className="p-2 bg-gray-800 rounded hover:bg-gray-700 text-white"
+                        title="Zoom out (or scroll down)"
                     >
                         <ZoomOut size={20} />
                     </button>
@@ -572,8 +597,8 @@ const ScenarioBuilder = () => {
                         <button
                             onClick={() => setToolAndCommitPointPath('select')}
                             className={`w-full p-3 rounded-lg border flex items-center justify-center gap-2 transition-all ${tool === 'select'
-                                    ? 'bg-blue-500/20 border-blue-500 text-blue-500'
-                                    : 'border-gray-700 hover:bg-gray-800 text-gray-300'
+                                ? 'bg-blue-500/20 border-blue-500 text-blue-500'
+                                : 'border-gray-700 hover:bg-gray-800 text-gray-300'
                                 }`}
                         >
                             <MousePointer size={20} />
@@ -588,8 +613,8 @@ const ScenarioBuilder = () => {
                             <button
                                 onClick={() => setToolAndCommitPointPath('road')}
                                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${tool === 'road'
-                                        ? 'bg-primary/20 border-primary text-primary'
-                                        : 'border-gray-700 hover:bg-gray-800 text-gray-300'
+                                    ? 'bg-primary/20 border-primary text-primary'
+                                    : 'border-gray-700 hover:bg-gray-800 text-gray-300'
                                     }`}
                             >
                                 <Brush size={20} />
@@ -598,8 +623,8 @@ const ScenarioBuilder = () => {
                             <button
                                 onClick={() => setToolAndCommitPointPath('road-points')}
                                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${tool === 'road-points'
-                                        ? 'bg-primary/20 border-primary text-primary'
-                                        : 'border-gray-700 hover:bg-gray-800 text-gray-300'
+                                    ? 'bg-primary/20 border-primary text-primary'
+                                    : 'border-gray-700 hover:bg-gray-800 text-gray-300'
                                     }`}
                             >
                                 <CircleDot size={20} />
@@ -608,8 +633,8 @@ const ScenarioBuilder = () => {
                             <button
                                 onClick={() => setToolAndCommitPointPath('eraser')}
                                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${tool === 'eraser'
-                                        ? 'bg-red-500/20 border-red-500 text-red-500'
-                                        : 'border-gray-700 hover:bg-gray-800 text-gray-300'
+                                    ? 'bg-red-500/20 border-red-500 text-red-500'
+                                    : 'border-gray-700 hover:bg-gray-800 text-gray-300'
                                     }`}
                             >
                                 <Eraser size={20} />
@@ -653,8 +678,8 @@ const ScenarioBuilder = () => {
                             <button
                                 onClick={() => setToolAndCommitPointPath('light')}
                                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${tool === 'light'
-                                        ? 'bg-yellow-500/20 border-yellow-500 text-yellow-500'
-                                        : 'border-gray-700 hover:bg-gray-800 text-gray-300'
+                                    ? 'bg-yellow-500/20 border-yellow-500 text-yellow-500'
+                                    : 'border-gray-700 hover:bg-gray-800 text-gray-300'
                                     }`}
                             >
                                 <Lightbulb size={20} />
@@ -663,8 +688,8 @@ const ScenarioBuilder = () => {
                             <button
                                 onClick={() => setToolAndCommitPointPath('stop')}
                                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${tool === 'stop'
-                                        ? 'bg-red-500/20 border-red-500 text-red-500'
-                                        : 'border-gray-700 hover:bg-gray-800 text-gray-300'
+                                    ? 'bg-red-500/20 border-red-500 text-red-500'
+                                    : 'border-gray-700 hover:bg-gray-800 text-gray-300'
                                     }`}
                             >
                                 <Octagon size={20} />
@@ -680,8 +705,8 @@ const ScenarioBuilder = () => {
                             <button
                                 onClick={() => setToolAndCommitPointPath('ped')}
                                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${tool === 'ped'
-                                        ? 'bg-purple-500/20 border-purple-500 text-purple-500'
-                                        : 'border-gray-700 hover:bg-gray-800 text-gray-300'
+                                    ? 'bg-purple-500/20 border-purple-500 text-purple-500'
+                                    : 'border-gray-700 hover:bg-gray-800 text-gray-300'
                                     }`}
                             >
                                 <Users size={20} />
@@ -690,8 +715,8 @@ const ScenarioBuilder = () => {
                             <button
                                 onClick={() => setToolAndCommitPointPath('obs')}
                                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${tool === 'obs'
-                                        ? 'bg-orange-500/20 border-orange-500 text-orange-500'
-                                        : 'border-gray-700 hover:bg-gray-800 text-gray-300'
+                                    ? 'bg-orange-500/20 border-orange-500 text-orange-500'
+                                    : 'border-gray-700 hover:bg-gray-800 text-gray-300'
                                     }`}
                             >
                                 <TrafficCone size={20} />
@@ -759,8 +784,8 @@ const ScenarioBuilder = () => {
                         <button
                             onClick={() => setIsPreviewing(!isPreviewing)}
                             className={`w-full py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all mb-2 ${isPreviewing
-                                    ? 'bg-red-500 text-white hover:bg-red-600'
-                                    : 'bg-secondary text-white hover:bg-secondary/90'
+                                ? 'bg-red-500 text-white hover:bg-red-600'
+                                : 'bg-secondary text-white hover:bg-secondary/90'
                                 }`}
                         >
                             <Play size={18} fill="currentColor" />

@@ -318,16 +318,16 @@ const SceneSimulation = () => {
                         state === 'red'
                             ? '#ef4444'
                             : state === 'yellow'
-                              ? '#eab308'
-                              : '#10b981';
+                                ? '#eab308'
+                                : '#10b981';
                     ctx.beginPath();
                     ctx.arc(light.x, light.y - 10, 4, 0, Math.PI * 2);
                     ctx.fill();
                 });
             }
 
-            // AI Simulation: cycle traffic lights red → green → yellow → red (match backend)
-            if (isRunning && !isManual && scenario?.traffic_lights?.length) {
+            // Traffic light cycling: red → green → yellow → red (works in both AI and Manual modes)
+            if (isRunning && scenario?.traffic_lights?.length) {
                 const now = performance.now();
                 const CYCLE = { red: 3000, green: 3000, yellow: 500 };
                 const NEXT = { red: 'green', green: 'yellow', yellow: 'red' };
