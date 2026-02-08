@@ -257,14 +257,14 @@ const SceneSimulation = () => {
             if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'Shift') keysPressed.current.down = true;
             if (e.key === 'ArrowLeft' || e.key === 'a') keysPressed.current.left = true;
             if (e.key === 'ArrowRight' || e.key === 'd') keysPressed.current.right = true;
-            if (e.code === 'Space') keysPressed.current.boost = true;
+            if (e.key === 'g' || e.code === 'KeyG') keysPressed.current.boost = true;
         };
         const handleKeyUp = (e) => {
             if (e.key === 'ArrowUp' || e.key === 'w') keysPressed.current.up = false;
             if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'Shift') keysPressed.current.down = false;
             if (e.key === 'ArrowLeft' || e.key === 'a') keysPressed.current.left = false;
             if (e.key === 'ArrowRight' || e.key === 'd') keysPressed.current.right = false;
-            if (e.code === 'Space') keysPressed.current.boost = false;
+            if (e.key === 'g' || e.code === 'KeyG') keysPressed.current.boost = false;
         };
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('keyup', handleKeyUp);
@@ -501,7 +501,8 @@ const SceneSimulation = () => {
                     const dy = p.y - m.lastPosition.y;
                     const pixelDist = Math.hypot(dx, dy);
                     // Convert pixel distance to meters (matching the speed unit conversion)
-                    m.distanceTraveled += pixelDist * 2.78;
+                    // Previous factor 2.78 was too high, scaling down by 100
+                    m.distanceTraveled += pixelDist * 0.0278;
                 }
                 m.lastPosition = { x: p.x, y: p.y };
 
@@ -917,7 +918,7 @@ const SceneSimulation = () => {
                                     </div>
                                     <div className="flex justify-between">
                                         <span>Boost:</span>
-                                        <span className="font-mono text-blue-400">SPACE</span>
+                                        <span className="font-mono text-blue-400">G</span>
                                     </div>
                                     <p className="text-xs text-theme-muted mt-2">Car spawns on the start of the first road.</p>
                                 </div>
