@@ -8,21 +8,33 @@ import JobsDashboard from '@/pages/JobsDashboard';
 import MetricsAnalytics from '@/pages/MetricsAnalytics';
 import ChatWidget from '@/components/assistant/ChatWidget';
 
+import { AuthProvider } from '@/contexts/AuthContext';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import Login from '@/pages/Login';
+import Register from '@/pages/Register';
+
 function App() {
     return (
         <ThemeProvider>
-            <Router>
-                <Routes>
-                    <Route path="/" element={<Layout />}>
-                        <Route index element={<Navigate to="/scenario-builder" replace />} />
-                        <Route path="scenario-builder" element={<ScenarioBuilder />} />
-                        <Route path="simulation" element={<SceneSimulation />} />
-                        <Route path="jobs" element={<JobsDashboard />} />
-                        <Route path="metrics" element={<MetricsAnalytics />} />
-                    </Route>
-                </Routes>
-                <ChatWidget />
-            </Router>
+            <AuthProvider>
+                <Router>
+                    <Routes>
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/register" element={<Register />} />
+
+                        <Route element={<ProtectedRoute />}>
+                            <Route element={<Layout />}>
+                                <Route path="/" element={<Navigate to="/scenario-builder" replace />} />
+                                <Route path="/scenario-builder" element={<ScenarioBuilder />} />
+                                <Route path="/simulation" element={<SceneSimulation />} />
+                                <Route path="/jobs" element={<JobsDashboard />} />
+                                <Route path="/metrics" element={<MetricsAnalytics />} />
+                            </Route>
+                        </Route>
+                    </Routes>
+                    <ChatWidget />
+                </Router>
+            </AuthProvider>
         </ThemeProvider>
     );
 }

@@ -1,12 +1,14 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MapPin, LayoutDashboard, Cpu, BarChart3, Sun, Moon } from 'lucide-react';
+import { MapPin, LayoutDashboard, Cpu, BarChart3, Sun, Moon, LogOut } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import logo from '@/assets/logo.png';
 
 const Sidebar = () => {
     const location = useLocation();
     const { isDarkMode, toggleTheme } = useTheme();
+    const { user, logout } = useAuth();
 
     const navItems = [
         { path: '/scenario-builder', label: 'Scenario Builder', icon: MapPin },
@@ -43,11 +45,12 @@ const Sidebar = () => {
                 })}
             </nav>
 
-            {/* Theme Toggle */}
+            {/* User Info & Logout */}
             <div className="absolute bottom-16 w-full px-6">
+                {/* Theme Toggle */}
                 <button
                     onClick={toggleTheme}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-theme-hover rounded-lg text-theme-secondary hover:text-theme-primary transition-colors"
+                    className="w-full mb-3 flex items-center justify-center gap-2 px-4 py-2 bg-theme-hover rounded-lg text-theme-secondary hover:text-theme-primary transition-colors"
                 >
                     {isDarkMode ? (
                         <>
@@ -61,10 +64,30 @@ const Sidebar = () => {
                         </>
                     )}
                 </button>
+
+                {user && (
+                    <div className="pt-3 border-t border-theme">
+                        <div className="flex items-center gap-3 mb-3 px-2">
+                            <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 font-bold">
+                                {user.email[0].toUpperCase()}
+                            </div>
+                            <div className="overflow-hidden">
+                                <p className="text-sm font-medium text-theme-primary truncate">{user.email}</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={logout}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                        >
+                            <LogOut size={18} />
+                            <span>Logout</span>
+                        </button>
+                    </div>
+                )}
             </div>
 
-            <div className="absolute bottom-0 w-full p-6 border-t border-theme">
-                <p className="text-xs text-theme-muted">© 2026 Aumovio Simulator</p>
+            <div className="absolute bottom-0 w-full p-4 border-t border-theme bg-theme-card">
+                <p className="text-xs text-theme-muted text-center">© 2026 Aumovio Simulator</p>
             </div>
         </div>
     );

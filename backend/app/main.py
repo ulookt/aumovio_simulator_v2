@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 
 from app.database import Base, engine
-from app.routers import scenarios, jobs, metrics, assistant
+from app.routers import scenarios, jobs, metrics, assistant, auth
 
 load_dotenv()
 
@@ -42,6 +42,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth.router, prefix="/api", tags=["auth"])
 app.include_router(scenarios.router, prefix="/api", tags=["scenarios"])
 app.include_router(jobs.router, prefix="/api", tags=["jobs"])
 app.include_router(metrics.router, prefix="/api", tags=["metrics"])
